@@ -1,0 +1,1 @@
+web: gunicorn detection_pro.wsgi
