@@ -66,77 +66,169 @@ def ping_server(request):
  
  
 @csrf_exempt
+# def send_alert_email(request):
+#     if request.method != "POST":
+#         return JsonResponse({"error": "POST only"}, status=405)
+ 
+#     try:
+#         data = json.loads(request.body)
+#     except (json.JSONDecodeError, AttributeError):
+#         return JsonResponse({"error": "Invalid JSON"}, status=400)
+ 
+#     animal        = data.get("detectedClass", "").strip()
+#     confidence    = data.get("confidence", "N/A")
+#     lat           = data.get("latitude")
+#     lon           = data.get("longitude")
+#     address       = data.get("locationAddress", "")
+#     image_url     = data.get("imageDataUrl", "")
+ 
+#     if not animal:
+#         return JsonResponse({"error": "detectedClass required"}, status=400)
+#     if animal not in ANIMAL_CLASSES:
+#         return JsonResponse({"error": f"'{animal}' not an alert class"}, status=400)
+ 
+#     # ── Save detection record ─────────────────────────────
+#     detection = WildlifeDetection(
+#         animal_name=animal,
+#         confidence=float(confidence) if confidence != "N/A" else 0.0,
+#         latitude=lat,
+#         longitude=lon,
+#         location_address=address,
+#     )
+ 
+#     if image_url and image_url.startswith("data:image"):
+#         try:
+#             _, b64 = image_url.split(",", 1)
+#             fname  = f"{animal}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+#             detection.animal_image.save(fname, ContentFile(base64.b64decode(b64)), save=False)
+#         except Exception:
+#             pass
+ 
+#     detection.save()
+ 
+#     # ── Collect nearby email addresses ────────────────────
+#     emails = []
+#     if lat and lon:
+#         emails += _filter_nearby(Userdb.objects.all(),                          lat, lon, "email")
+#         emails += _filter_nearby(ForestOfficer.objects.filter(status=True),     lat, lon, "email")
+#         emails += _filter_nearby(WildlifeProtectionTeam.objects.filter(status=True), lat, lon, "contact_email")
+#     else:
+#         emails = list(getattr(settings, "ALERT_EMAIL_RECIPIENTS", []))
+ 
+#     # ── Send emails ───────────────────────────────────────
+#     subject = f"⚠️ Wildlife Alert — {animal} Detected!"
+#     body    = _email_body(animal, confidence, address, lat, lon, detection.detected_at)
+#     sent    = 0
+#     errors  = []
+ 
+#     for email in emails:
+#         try:
+#             send_mail(subject, body, settings.EMAIL_HOST_USER, [email], fail_silently=False)
+#             sent += 1
+#         except Exception as e:
+#             errors.append(f"{email}: {e}")
+ 
+#     return JsonResponse({
+#         "success":      True,
+#         "detectedClass": animal,
+#         "confidence":   confidence,
+#         "detectionId":  detection.id,
+#         "emailsSent":   sent,
+#         "errors":       errors,
+#     })
+
 def send_alert_email(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST only"}, status=405)
- 
+
+    # ── Parse request body ────────────────────────────────
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, AttributeError):
         return JsonResponse({"error": "Invalid JSON"}, status=400)
- 
-    animal        = data.get("detectedClass", "").strip()
-    confidence    = data.get("confidence", "N/A")
-    lat           = data.get("latitude")
-    lon           = data.get("longitude")
-    address       = data.get("locationAddress", "")
-    image_url     = data.get("imageDataUrl", "")
- 
+
+    animal     = data.get("detectedClass", "").strip()
+    confidence = data.get("confidence", "N/A")
+    lat        = data.get("latitude")
+    lon        = data.get("longitude")
+    address    = data.get("locationAddress", "")
+    image_url  = data.get("imageDataUrl", "")
+
     if not animal:
         return JsonResponse({"error": "detectedClass required"}, status=400)
     if animal not in ANIMAL_CLASSES:
         return JsonResponse({"error": f"'{animal}' not an alert class"}, status=400)
- 
+
     # ── Save detection record ─────────────────────────────
-    detection = WildlifeDetection(
-        animal_name=animal,
-        confidence=float(confidence) if confidence != "N/A" else 0.0,
-        latitude=lat,
-        longitude=lon,
-        location_address=address,
-    )
- 
-    if image_url and image_url.startswith("data:image"):
-        try:
-            _, b64 = image_url.split(",", 1)
-            fname  = f"{animal}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-            detection.animal_image.save(fname, ContentFile(base64.b64decode(b64)), save=False)
-        except Exception:
-            pass
- 
-    detection.save()
- 
+    try:
+        detection = WildlifeDetection(
+            animal_name=animal,
+            confidence=float(confidence) if confidence != "N/A" else 0.0,
+            latitude=lat,
+            longitude=lon,
+            location_address=address,
+        )
+
+        if image_url and image_url.startswith("data:image"):
+            try:
+                _, b64 = image_url.split(",", 1)
+                fname  = f"{animal}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+                detection.animal_image.save(
+                    fname, ContentFile(base64.b64decode(b64)), save=False
+                )
+            except (ValueError, base64.binascii.Error) as img_err:
+                # Log image error but continue saving the detection
+                print(f"[WARNING] Failed to decode/save image: {img_err}")
+
+        detection.save()
+
+    except Exception as db_err:
+        return JsonResponse(
+            {"error": f"Failed to save detection record: {str(db_err)}"}, status=500
+        )
+
     # ── Collect nearby email addresses ────────────────────
-    emails = []
-    if lat and lon:
-        emails += _filter_nearby(Userdb.objects.all(),                          lat, lon, "email")
-        emails += _filter_nearby(ForestOfficer.objects.filter(status=True),     lat, lon, "email")
-        emails += _filter_nearby(WildlifeProtectionTeam.objects.filter(status=True), lat, lon, "contact_email")
-    else:
-        emails = list(getattr(settings, "ALERT_EMAIL_RECIPIENTS", []))
- 
+    try:
+        emails = []
+        if lat and lon:
+            emails += _filter_nearby(Userdb.objects.all(),                               lat, lon, "email")
+            emails += _filter_nearby(ForestOfficer.objects.filter(status=True),          lat, lon, "email")
+            emails += _filter_nearby(WildlifeProtectionTeam.objects.filter(status=True), lat, lon, "contact_email")
+        else:
+            emails = list(getattr(settings, "ALERT_EMAIL_RECIPIENTS", []))
+
+    except Exception as filter_err:
+        return JsonResponse(
+            {"error": f"Failed to fetch recipient list: {str(filter_err)}"}, status=500
+        )
+
     # ── Send emails ───────────────────────────────────────
     subject = f"⚠️ Wildlife Alert — {animal} Detected!"
     body    = _email_body(animal, confidence, address, lat, lon, detection.detected_at)
     sent    = 0
     errors  = []
- 
+
     for email in emails:
         try:
-            send_mail(subject, body, settings.EMAIL_HOST_USER, [email], fail_silently=False)
+            send_mail(
+                subject,
+                body,
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
             sent += 1
-        except Exception as e:
-            errors.append(f"{email}: {e}")
- 
-    return JsonResponse({
-        "success":      True,
-        "detectedClass": animal,
-        "confidence":   confidence,
-        "detectionId":  detection.id,
-        "emailsSent":   sent,
-        "errors":       errors,
-    })
+        except Exception as mail_err:
+            errors.append(f"{email}: {mail_err}")
 
+    return JsonResponse({
+        "success":       True,
+        "detectedClass": animal,
+        "confidence":    confidence,
+        "detectionId":   detection.id,
+        "emailsSent":    sent,
+        "errors":        errors,
+    })
 
 
 
