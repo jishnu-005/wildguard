@@ -1,0 +1,687 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Danger Zones</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root {
+      --black:            #ffffff;
+      --black-2:          #f3f8ee;
+      --black-3:          #e8f2df;
+      --black-4:          #ddecd0;
+      --kiwi:             #5a9e10;
+      --kiwi-bright:      #6dba18;
+      --kiwi-dim:         #3d7008;
+      --kiwi-glow:        rgba(90,158,16,0.15);
+      --kiwi-glow-strong: rgba(90,158,16,0.30);
+      --white:            #1a2e0e;
+      --grey:             #5a7a4a;
+      --red:              #e05555;
+      --amber:            #d97706;
+      --blue:             #2563eb;
+      --sidebar-w:        260px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    .page-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+
+    /* ══ SIDEBAR ══ */
+    .sidebar {
+      position: fixed; top:0; left:0; bottom:0;
+      width: var(--sidebar-w);
+      background: rgba(243,248,238,0.97);
+      border-right: 1px solid rgba(90,158,16,0.15);
+      display: flex; flex-direction: column;
+      z-index: 200; backdrop-filter: blur(12px);
+      transition: transform 0.3s ease;
+    }
+    .sidebar-logo { display:flex; align-items:center; gap:0.65rem; padding:1.4rem 1.4rem 1.2rem; border-bottom:1px solid rgba(90,158,16,0.12); text-decoration:none; flex-shrink:0; }
+    .sidebar-logo-icon { width:36px; height:36px; background:var(--kiwi); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; box-shadow:0 0 16px var(--kiwi-glow-strong); flex-shrink:0; }
+    .sidebar-logo-text { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.12em; color:var(--white); line-height:1; }
+    .sidebar-logo-text span { color:var(--kiwi); }
+    .sidebar-logo-sub { font-family:'Space Mono',monospace; font-size:0.48rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); margin-top:1px; }
+
+    .user-badge { margin:1rem 1.2rem 0.8rem; background:rgba(90,158,16,0.07); border:1px solid rgba(90,158,16,0.18); border-radius:10px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.7rem; flex-shrink:0; }
+    .user-avatar { width:40px; height:40px; border-radius:50%; background:var(--black-3); border:2px solid rgba(90,158,16,0.3); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; overflow:hidden; }
+    .user-avatar img { width:100%; height:100%; object-fit:cover; }
+    .user-info { min-width:0; flex:1; }
+    .user-name { font-weight:700; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .user-role { font-family:'Space Mono',monospace; font-size:0.54rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--kiwi); margin-top:1px; }
+    .user-id-tag { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.08em; color:var(--grey); margin-top:2px; }
+    .user-dot { width:8px; height:8px; border-radius:50%; background:var(--kiwi); margin-left:auto; flex-shrink:0; animation:pulse 2s infinite; box-shadow:0 0 6px var(--kiwi); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .sidebar-nav { flex:1; overflow-y:auto; padding:0.6rem 0.8rem; scrollbar-width:thin; scrollbar-color:rgba(90,158,16,0.2) transparent; }
+    .nav-section-label { font-family:'Space Mono',monospace; font-size:0.52rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--grey); padding:0.8rem 0.6rem 0.4rem; opacity:0.7; }
+    .nav-item { display:flex; align-items:center; gap:0.7rem; padding:0.62rem 0.9rem; border-radius:8px; text-decoration:none; color:var(--grey); font-size:0.84rem; font-weight:600; transition:background 0.2s,color 0.2s; cursor:pointer; margin-bottom:2px; }
+    .nav-item:hover { background:rgba(90,158,16,0.08); color:var(--white); }
+    .nav-item.active { background:rgba(90,158,16,0.12); color:var(--kiwi); border-left:3px solid var(--kiwi); }
+    .nav-icon { font-size:1rem; flex-shrink:0; width:20px; text-align:center; }
+    .nav-badge { margin-left:auto; background:var(--kiwi); color:#fff; font-family:'Space Mono',monospace; font-size:0.52rem; font-weight:700; padding:1px 7px; border-radius:20px; min-width:20px; text-align:center; }
+    .nav-badge.red   { background:var(--red); }
+    .nav-badge.amber { background:var(--amber); }
+    .nav-badge.blue  { background:var(--blue); }
+    .nav-badge.grey  { background:var(--grey); }
+
+    .sidebar-footer { padding:0.8rem; border-top:1px solid rgba(90,158,16,0.12); flex-shrink:0; }
+    .btn-logout { width:100%; display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.9rem; background:rgba(224,85,85,0.06); border:1px solid rgba(224,85,85,0.2); border-radius:8px; color:var(--red); font-family:'Space Mono',monospace; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; text-decoration:none; transition:background 0.2s,border-color 0.2s; }
+    .btn-logout:hover { background:rgba(224,85,85,0.12); border-color:rgba(224,85,85,0.4); }
+
+    /* ══ TOPBAR ══ */
+    .topbar { position:fixed; top:0; left:var(--sidebar-w); right:0; height:62px; background:rgba(255,255,255,0.95); border-bottom:1px solid rgba(90,158,16,0.12); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; padding:0 2rem; z-index:150; transition:left 0.3s; }
+    .topbar-left { display:flex; align-items:center; gap:0.8rem; }
+    .topbar-page-label { font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); }
+    .topbar-page-title { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.06em; color:var(--white); }
+    .topbar-sep { width:1px; height:24px; background:rgba(90,158,16,0.2); }
+    .topbar-right { display:flex; align-items:center; gap:1rem; }
+    .topbar-time { font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; color:var(--grey); }
+    .topbar-alert-dot { width:10px; height:10px; border-radius:50%; background:var(--kiwi); animation:pulse 1.5s infinite; box-shadow:0 0 8px var(--kiwi); }
+    .topbar-alert-dot.red   { background:var(--red);   box-shadow:0 0 8px rgba(224,85,85,0.5); }
+    .topbar-alert-dot.amber { background:var(--amber); box-shadow:0 0 8px rgba(217,119,6,0.5); }
+
+    .hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:4px; background:none; border:none; }
+    .hamburger span { display:block; width:22px; height:2px; background:var(--kiwi); border-radius:2px; transition:all 0.3s; }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.6); backdrop-filter:blur(2px); z-index:190; }
+    .sidebar-overlay.open { display:block; }
+
+    .scanline-bar { position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--kiwi),transparent); opacity:0; animation:scanBar 8s ease-in-out infinite; }
+    @keyframes scanBar { 0%{left:-100%;opacity:0} 10%{opacity:0.4} 90%{opacity:0.2} 100%{left:100%;opacity:0} }
+
+    /* ══ MAIN ══ */
+    .main { margin-left:var(--sidebar-w); padding-top:62px; min-height:100vh; position:relative; z-index:1; transition:margin-left 0.3s; }
+    .content { padding:2rem 2rem 3rem; max-width:1400px; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ══ PAGE BANNER ══ */
+    .page-banner {
+      position: relative;
+      background: linear-gradient(135deg, #b45309 0%, #78350f 100%);
+      border-radius: 16px;
+      padding: 1.8rem 2rem;
+      margin-bottom: 2rem;
+      overflow: hidden;
+      animation: fadeUp 0.5s ease forwards; opacity: 0;
+    }
+    .page-banner::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .page-banner::after {
+      content: '⚠️';
+      position: absolute; right: 2rem; top: 50%;
+      transform: translateY(-50%);
+      font-size: 5rem; opacity: 0.12;
+      pointer-events: none;
+    }
+    .page-banner-eyebrow { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; color:rgba(255,255,255,0.7); margin-bottom:0.35rem; position:relative; }
+    .page-banner-heading { font-family:'Bebas Neue',sans-serif; font-size:clamp(1.6rem,3vw,2.2rem); letter-spacing:0.06em; color:#fff; line-height:1; position:relative; }
+    .page-banner-sub { font-size:0.82rem; color:rgba(255,255,255,0.75); margin-top:0.5rem; position:relative; }
+    .page-banner-meta { display:flex; align-items:center; gap:1.2rem; margin-top:1.1rem; flex-wrap:wrap; position:relative; }
+    .banner-chip { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); border-radius:20px; padding:0.3rem 0.8rem; font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.08em; color:#fff; white-space:nowrap; }
+    .banner-chip.crit { background:rgba(255,255,255,0.25); border-color:rgba(255,255,255,0.5); font-weight:700; }
+
+    /* ══ STAT CARDS ══ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--black-2);
+      border: 1px solid rgba(90,158,16,0.15);
+      border-radius: 12px;
+      padding: 1.2rem 1.3rem;
+      position: relative;
+      overflow: hidden;
+      display: block;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      animation: fadeUp 0.5s ease forwards; opacity: 0;
+    }
+    .stat-card:hover { transform:translateY(-3px); box-shadow:0 8px 28px rgba(90,158,16,0.12); border-color:rgba(90,158,16,0.3); }
+    .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; }
+    .stat-card.kiwi::before  { background:var(--kiwi); }
+    .stat-card.red::before   { background:var(--red); }
+    .stat-card.amber::before { background:var(--amber); }
+    .stat-card.blue::before  { background:var(--blue); }
+    .stat-card-icon { font-size:1.5rem; margin-bottom:0.7rem; display:block; }
+    .stat-card-label { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--grey); margin-bottom:0.4rem; }
+    .stat-card-value { font-family:'Bebas Neue',sans-serif; font-size:2.2rem; letter-spacing:0.04em; line-height:1; }
+    .stat-card.kiwi  .stat-card-value { color:var(--kiwi); }
+    .stat-card.red   .stat-card-value { color:var(--red); }
+    .stat-card.amber .stat-card-value { color:var(--amber); }
+    .stat-card.blue  .stat-card-value { color:var(--blue); }
+    .stat-card-sub { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.06em; color:var(--grey); margin-top:0.35rem; opacity:0.75; }
+    .stat-trend { display:inline-flex; align-items:center; gap:3px; font-family:'Space Mono',monospace; font-size:0.5rem; margin-top:0.4rem; padding:1px 6px; border-radius:12px; font-weight:700; }
+    .stat-trend.up   { background:rgba(224,85,85,0.1); color:var(--red); }
+    .stat-trend.down { background:rgba(90,158,16,0.1); color:var(--kiwi); }
+    .stat-trend.same { background:rgba(90,122,74,0.08); color:var(--grey); }
+    .stat-card-glow { position:absolute; bottom:-10px; right:-10px; width:70px; height:70px; border-radius:50%; opacity:0.07; }
+    .stat-card.kiwi  .stat-card-glow { background:var(--kiwi); }
+    .stat-card.red   .stat-card-glow { background:var(--red); }
+    .stat-card.amber .stat-card-glow { background:var(--amber); }
+    .stat-card.blue  .stat-card-glow { background:var(--blue); }
+
+    /* ══ LAYOUT ══ */
+    .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; margin-bottom:1.4rem; }
+    .dash-grid.wide { grid-template-columns:3fr 2fr; }
+
+    /* ══ PANEL ══ */
+    .panel {
+      background: var(--black-2);
+      border: 1px solid rgba(90,158,16,0.15);
+      border-radius: 12px;
+      overflow: hidden;
+      animation: fadeUp 0.6s ease forwards; opacity: 0;
+    }
+    .panel-header { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.4rem; border-bottom:1px solid rgba(90,158,16,0.1); background:rgba(90,158,16,0.03); flex-wrap:wrap; gap:0.5rem; }
+    .panel-title { font-family:'Space Mono',monospace; font-size:0.63rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--kiwi); display:flex; align-items:center; gap:0.5rem; }
+    .panel-title.amber-title { color:var(--amber); }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:var(--kiwi); animation:pulse 1.5s infinite; display:inline-block; flex-shrink:0; }
+    .live-dot.red   { background:var(--red); }
+    .live-dot.amber { background:var(--amber); }
+    .panel-body { padding:1.2rem 1.4rem; }
+    .panel-action { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.08em; color:var(--kiwi); text-decoration:none; opacity:0.8; transition:opacity 0.2s; }
+    .panel-action:hover { opacity:1; }
+
+    /* ══ MAP ══ */
+    #dangerMap { width:100%; height:480px; border-radius:0 0 12px 12px; z-index:1; }
+    .map-legend { display:flex; gap:1.2rem; flex-wrap:wrap; align-items:center; }
+    .legend-item { display:flex; align-items:center; gap:0.4rem; font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.06em; color:var(--grey); }
+    .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .legend-dot.critical { background:var(--red);   box-shadow:0 0 6px rgba(224,85,85,0.5); }
+    .legend-dot.danger   { background:var(--amber); box-shadow:0 0 6px rgba(217,119,6,0.4); }
+    .legend-dot.safe     { background:var(--kiwi);  box-shadow:0 0 6px var(--kiwi-glow); }
+
+    /* ══ ZONE LIST ══ */
+    .zone-list { display:flex; flex-direction:column; gap:0.6rem; max-height:440px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(90,158,16,0.2) transparent; padding-right:2px; }
+    .zone-item {
+      display:flex; align-items:flex-start; gap:0.85rem;
+      padding:0.9rem 1rem;
+      background:var(--black-3);
+      border-radius:10px;
+      border-left:3px solid transparent;
+      transition:background 0.15s, border-color 0.2s;
+      cursor: pointer;
+    }
+    .zone-item:hover { background:var(--black-4); }
+    .zone-item.critical { border-color:var(--red); }
+    .zone-item.danger   { border-color:var(--amber); }
+    .zone-item.safe     { border-color:var(--kiwi); }
+    .zone-item.selected { outline:2px solid var(--kiwi); outline-offset:1px; }
+
+    .zone-sev-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+    .zone-sev-icon.critical { background:rgba(224,85,85,0.1); border:1px solid rgba(224,85,85,0.25); }
+    .zone-sev-icon.danger   { background:rgba(217,119,6,0.1);  border:1px solid rgba(217,119,6,0.25); }
+    .zone-sev-icon.safe     { background:rgba(90,158,16,0.1);  border:1px solid rgba(90,158,16,0.25); }
+
+    .zone-info { flex:1; min-width:0; }
+    .zone-addr { font-weight:700; font-size:0.84rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .zone-animals { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--grey); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .zone-meta-row { display:flex; align-items:center; justify-content:space-between; margin-top:0.45rem; gap:0.5rem; flex-wrap:wrap; }
+    .zone-time { font-family:'Space Mono',monospace; font-size:0.56rem; color:var(--grey); }
+    .zone-coords { font-family:'Space Mono',monospace; font-size:0.52rem; color:var(--grey); opacity:0.7; }
+
+    /* ══ PILLS ══ */
+    .pill { display:inline-flex; align-items:center; gap:3px; font-family:'Space Mono',monospace; font-size:0.55rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+    .pill::before { content:'●'; font-size:0.42rem; }
+    .pill.red    { background:rgba(224,85,85,0.1);  color:var(--red);   border:1px solid rgba(224,85,85,0.25); }
+    .pill.amber  { background:rgba(217,119,6,0.1);  color:var(--amber); border:1px solid rgba(217,119,6,0.25); }
+    .pill.green  { background:rgba(90,158,16,0.1);  color:var(--kiwi);  border:1px solid rgba(90,158,16,0.25); }
+    .pill.blue   { background:rgba(37,99,235,0.1);  color:var(--blue);  border:1px solid rgba(37,99,235,0.25); }
+    .pill.grey   { background:rgba(90,122,74,0.08); color:var(--grey);  border:1px solid rgba(90,122,74,0.2); }
+
+    /* ══ EMPTY STATE ══ */
+    .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:3rem 1rem; gap:0.8rem; opacity:0.6; }
+    .empty-icon  { font-size:2.5rem; }
+    .empty-text  { font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--grey); text-align:center; }
+
+    /* ══ FILTER BAR ══ */
+    .filter-bar { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+    .filter-btn { font-family:'Space Mono',monospace; font-size:0.6rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:0.35rem 0.85rem; border-radius:20px; border:1px solid rgba(90,158,16,0.2); background:transparent; color:var(--grey); cursor:pointer; transition:all 0.2s; }
+    .filter-btn:hover { background:rgba(90,158,16,0.08); border-color:rgba(90,158,16,0.35); color:var(--white); }
+    .filter-btn.active       { background:var(--kiwi);  border-color:var(--kiwi);  color:#fff; }
+    .filter-btn.red-filter.active   { background:var(--red);   border-color:var(--red); }
+    .filter-btn.amber-filter.active { background:var(--amber); border-color:var(--amber); }
+
+    /* ══ COUNT BADGE ══ */
+    .zone-count-badge { flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:40px; padding:0.2rem 0.5rem; background:var(--black-4); border-radius:8px; }
+    .zone-count-num   { font-family:'Bebas Neue',sans-serif; font-size:1.3rem; line-height:1; }
+    .zone-count-label { font-family:'Space Mono',monospace; font-size:0.46rem; letter-spacing:0.08em; color:var(--grey); text-transform:uppercase; }
+    .zone-item.critical .zone-count-num { color:var(--red); }
+    .zone-item.danger   .zone-count-num { color:var(--amber); }
+    .zone-item.safe     .zone-count-num { color:var(--kiwi); }
+
+    /* ══ LEAFLET POPUP OVERRIDES ══ */
+    .leaflet-popup-content-wrapper { border-radius:10px; border:1px solid rgba(90,158,16,0.25); box-shadow:0 4px 20px rgba(0,0,0,0.12); }
+    .leaflet-popup-content { font-family:'Syne',sans-serif; font-size:0.82rem; color:var(--white); }
+    .popup-title { font-weight:700; margin-bottom:4px; font-size:0.88rem; }
+    .popup-meta  { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--grey); margin-bottom:2px; }
+
+    /* ══ RESPONSIVE ══ */
+    @media (max-width:1280px) {
+      .stats-grid { grid-template-columns:repeat(2, 1fr); }
+      .dash-grid.wide { grid-template-columns:1fr; }
+    }
+    @media (max-width:1024px) {
+      :root { --sidebar-w:220px; }
+      .content { padding:1.5rem 1.5rem 3rem; }
+    }
+    @media (max-width:900px) {
+      .dash-grid { grid-template-columns:1fr; }
+      #dangerMap { height:360px; }
+      .zone-list { max-height:none; }
+    }
+    @media (max-width:768px) {
+      :root { --sidebar-w:260px; }
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); box-shadow:4px 0 30px rgba(90,158,16,0.15); }
+      .topbar { left:0; }
+      .hamburger { display:flex; }
+      .main { margin-left:0; }
+      .content { padding:1.2rem 1rem 3rem; }
+      .stats-grid { grid-template-columns:repeat(2, 1fr); gap:0.8rem; }
+      .page-banner::after { display:none; }
+      #dangerMap { height:300px; }
+    }
+    @media (max-width:480px) {
+      .stats-grid { grid-template-columns:repeat(2, 1fr); gap:0.7rem; }
+      .topbar-time { display:none; }
+      .page-banner-meta { gap:0.6rem; }
+      .filter-bar { gap:0.4rem; }
+      .stat-card { padding:1rem 1rem; }
+      .stat-card-value { font-size:1.9rem; }
+    }
+    @media (max-width:360px) {
+      .stats-grid { grid-template-columns:1fr 1fr; gap:0.5rem; }
+      .stat-card-value { font-size:1.6rem; }
+      .content { padding:1rem 0.75rem 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <a href="{% url 'wildlife_home' %}" class="sidebar-logo">
+    <div class="sidebar-logo-icon">🐾</div>
+    <div>
+      <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+      <div class="sidebar-logo-sub">Wildlife Portal</div>
+    </div>
+  </a>
+
+  <div class="user-badge">
+    <div class="user-avatar">
+      {% if team.profile_image %}
+        <img src="{{ team.profile_image.url }}" alt="{{ team.team_name }}"/>
+      {% else %}🌿{% endif %}
+    </div>
+    <div class="user-info">
+      <div class="user-name">{{ team.team_name|default:"Wildlife Team" }}</div>
+      <div class="user-role">{{ team.leader_name|default:"Team Leader" }}</div>
+      <div class="user-id-tag">{{ team.team_id|default:"—" }}</div>
+    </div>
+    <div class="user-dot"></div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-item" href="{% url 'wildlife_home' %}">
+      <span class="nav-icon">📊</span>Dashboard
+    </a>
+
+    <div class="nav-section-label">Alerts</div>
+    <a class="nav-item" href="{% url 'wildlife_alerts_list' %}">
+      <span class="nav-icon">🔔</span>Wildlife Alerts
+    </a>
+    <a class="nav-item" href="{% url 'wildlife_sos_report_list' %}">
+      <span class="nav-icon">🚨</span>Emergency SOS Reports
+    </a>
+
+    <div class="nav-section-label">Tasks & Field</div>
+    <a class="nav-item active" href="{% url 'wildlife_danger_zone' %}">
+      <span class="nav-icon">⚠️</span>Danger Zones
+    </a>
+
+    <div class="nav-section-label">My Account</div>
+    <a class="nav-item" href="{% url 'wildlife_profile' %}">
+      <span class="nav-icon">👤</span>My Profile
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="{% url 'logout' %}" class="btn-logout"><span>⏏</span> Log Out</a>
+  </div>
+</aside>
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-sep"></div>
+    <div>
+      <div class="topbar-page-label">// Wildlife Portal</div>
+      <div class="topbar-page-title">DANGER ZONES</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-time" id="liveClock"></div>
+    {% if critical_zones %}
+    <div class="topbar-alert-dot red"></div>
+    {% endif %}
+    {% if danger_zones %}
+    <div class="topbar-alert-dot amber"></div>
+    {% endif %}
+    <div class="topbar-alert-dot"></div>
+  </div>
+  <div class="scanline-bar"></div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+<div class="content">
+
+  <!-- ── PAGE BANNER ── -->
+  <div class="page-banner">
+    <div class="page-banner-eyebrow">// Field Intelligence · Wildlife Hotspot Monitor</div>
+    <div class="page-banner-heading">DANGER ZONES NEARBY</div>
+    <div class="page-banner-sub">
+      {% if team %}{{ team.team_name }} · {{ team.location_address|default:"Field Area" }}{% else %}Wildlife zone analysis based on AI detection data{% endif %}
+    </div>
+    <div class="page-banner-meta">
+      {% if critical_zones %}
+      <span class="banner-chip crit">🔴 {{ critical_zones }} Critical Zone{{ critical_zones|pluralize }}</span>
+      {% endif %}
+      {% if danger_zones %}
+      <span class="banner-chip">🟠 {{ danger_zones }} Danger Zone{{ danger_zones|pluralize }}</span>
+      {% endif %}
+      <span class="banner-chip">🐾 {{ total_detections }} Detection{{ total_detections|pluralize }}</span>
+      <span class="banner-chip">📍 {{ zones|length }} Location{{ zones|length|pluralize }}</span>
+    </div>
+  </div>
+
+  <!-- ── STAT CARDS ── -->
+  <div class="stats-grid">
+
+    <div class="stat-card red" style="animation-delay:0.05s;">
+      <span class="stat-card-icon">🔴</span>
+      <div class="stat-card-label">Critical Zones</div>
+      <div class="stat-card-value">{{ critical_zones|default:"0" }}</div>
+      <div class="stat-card-sub">≥ 5 detections</div>
+      <div class="stat-trend up">⚡ High Risk</div>
+      <div class="stat-card-glow"></div>
+    </div>
+
+    <div class="stat-card amber" style="animation-delay:0.1s;">
+      <span class="stat-card-icon">🟠</span>
+      <div class="stat-card-label">Danger Zones</div>
+      <div class="stat-card-value">{{ danger_zones|default:"0" }}</div>
+      <div class="stat-card-sub">2–4 detections</div>
+      <div class="stat-trend up">⚠ Caution</div>
+      <div class="stat-card-glow"></div>
+    </div>
+
+    <div class="stat-card kiwi" style="animation-delay:0.15s;">
+      <span class="stat-card-icon">🟢</span>
+      <div class="stat-card-label">Low Risk Sites</div>
+      <div class="stat-card-value">{{ safe_zones|default:"0" }}</div>
+      <div class="stat-card-sub">Single detection</div>
+      <div class="stat-trend down">✓ Monitored</div>
+      <div class="stat-card-glow"></div>
+    </div>
+
+    <div class="stat-card blue" style="animation-delay:0.2s;">
+      <span class="stat-card-icon">🐾</span>
+      <div class="stat-card-label">Total Detections</div>
+      <div class="stat-card-value">{{ total_detections|default:"0" }}</div>
+      <div class="stat-card-sub">All AI sightings</div>
+      <div class="stat-trend same">→ Tracked</div>
+      <div class="stat-card-glow"></div>
+    </div>
+
+  </div>
+
+  <!-- ── MAP + ZONE LIST ── -->
+  <div class="dash-grid wide">
+
+    <!-- Map Panel -->
+    <div class="panel" style="animation-delay:0.25s;">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="live-dot red"></span>
+          Live Hotspot Map
+        </div>
+        <div class="map-legend">
+          <div class="legend-item"><div class="legend-dot critical"></div>Critical</div>
+          <div class="legend-item"><div class="legend-dot danger"></div>Danger</div>
+          <div class="legend-item"><div class="legend-dot safe"></div>Low Risk</div>
+        </div>
+      </div>
+      <div id="dangerMap"></div>
+    </div>
+
+    <!-- Zone List Panel -->
+    <div class="panel" style="animation-delay:0.3s;">
+      <div class="panel-header">
+        <div class="panel-title amber-title">
+          <span class="live-dot amber"></span>
+          Zone Listings
+        </div>
+        <span style="font-family:'Space Mono',monospace;font-size:0.58rem;color:var(--grey);">{{ zones|length }} site{{ zones|length|pluralize }}</span>
+      </div>
+      <div class="panel-body" style="padding:0.8rem 1rem;">
+
+        <!-- Filter Buttons -->
+        <div class="filter-bar" style="margin-bottom:0.8rem;">
+          <button class="filter-btn active"       data-filter="all"      onclick="filterZones('all',this)">All</button>
+          <button class="filter-btn red-filter"   data-filter="critical" onclick="filterZones('critical',this)">🔴 Critical</button>
+          <button class="filter-btn amber-filter" data-filter="danger"   onclick="filterZones('danger',this)">🟠 Danger</button>
+          <button class="filter-btn"              data-filter="safe"     onclick="filterZones('safe',this)">🟢 Low Risk</button>
+        </div>
+
+        <div class="zone-list" id="zoneList">
+          {% for zone in zones %}
+          <div class="zone-item {{ zone.severity }}"
+               data-sev="{{ zone.severity }}"
+               data-lat="{{ zone.lat }}"
+               data-lon="{{ zone.lon }}"
+               onclick="focusZone({{ zone.lat }}, {{ zone.lon }})">
+
+            <div class="zone-sev-icon {{ zone.severity }}">
+              {% if zone.severity == "critical" %}🔴
+              {% elif zone.severity == "danger" %}🟠
+              {% else %}🟢{% endif %}
+            </div>
+
+            <div class="zone-info">
+              <div class="zone-addr" title="{{ zone.address }}">{{ zone.address }}</div>
+              <div class="zone-animals">
+                🐾 {% for a in zone.animals %}{{ a }}{% if not forloop.last %}, {% endif %}{% endfor %}
+              </div>
+              <div class="zone-meta-row">
+                {% if zone.severity == "critical" %}
+                  <span class="pill red">Critical</span>
+                {% elif zone.severity == "danger" %}
+                  <span class="pill amber">Danger</span>
+                {% else %}
+                  <span class="pill green">Low Risk</span>
+                {% endif %}
+                <span class="zone-time">
+                  {% if zone.latest_at %}{{ zone.latest_at|date:"d M, H:i" }}{% else %}—{% endif %}
+                </span>
+              </div>
+              <div class="zone-coords">{{ zone.lat|floatformat:4 }}, {{ zone.lon|floatformat:4 }}</div>
+            </div>
+
+            <div class="zone-count-badge">
+              <div class="zone-count-num">{{ zone.count }}</div>
+              <div class="zone-count-label">hits</div>
+            </div>
+
+          </div>
+          {% empty %}
+          <div class="empty-state">
+            <div class="empty-icon">🗺️</div>
+            <div class="empty-text">No detection zones found</div>
+          </div>
+          {% endfor %}
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /dash-grid -->
+
+</div>
+</main>
+
+<!-- ══ SCRIPTS ══ -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  /* ── Sidebar toggle ── */
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebarOverlay');
+  const hamburger = document.getElementById('hamburger');
+  hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+  overlay.addEventListener('click',   () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+  document.addEventListener('keydown', e => { if(e.key==='Escape'){ sidebar.classList.remove('open'); overlay.classList.remove('open'); }});
+
+  /* ── Live clock ── */
+  function updateClock() {
+    const n = new Date();
+    document.getElementById('liveClock').textContent =
+      String(n.getHours()).padStart(2,'0')+':'+
+      String(n.getMinutes()).padStart(2,'0')+':'+
+      String(n.getSeconds()).padStart(2,'0');
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  /* ── Map ── */
+  const zonesData = {{ zones_json|safe }};
+
+  const map = L.map('dangerMap', { zoomControl:true, scrollWheelZoom:true });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:18, attribution:'© OpenStreetMap'
+  }).addTo(map);
+
+  function makeIcon(severity) {
+    const colors = { critical:'#e05555', danger:'#d97706', safe:'#5a9e10' };
+    const color  = colors[severity] || colors.safe;
+    const size   = severity==='critical' ? 22 : severity==='danger' ? 17 : 13;
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        width:${size}px;height:${size}px;border-radius:50%;
+        background:${color};border:2.5px solid #fff;
+        box-shadow:0 0 ${size}px ${color}88,0 2px 6px rgba(0,0,0,0.25);
+      "></div>`,
+      iconSize:[size,size], iconAnchor:[size/2,size/2],
+    });
+  }
+
+  const markers = [];
+  const bounds  = [];
+
+  zonesData.forEach(z => {
+    const marker = L.marker([z.lat, z.lon], { icon: makeIcon(z.severity) }).addTo(map);
+    const sevLabel = z.severity==='critical' ? '🔴 Critical' : z.severity==='danger' ? '🟠 Danger' : '🟢 Low Risk';
+    const animalsStr = z.animals.join(', ') || '—';
+
+    marker.bindPopup(`
+      <div>
+        <div class="popup-title">${z.address}</div>
+        <div class="popup-meta">🐾 ${animalsStr}</div>
+        <div class="popup-meta">📅 Last seen: ${z.latest_at}</div>
+        <div class="popup-meta">📍 ${z.lat.toFixed(4)}, ${z.lon.toFixed(4)}</div>
+        <div style="margin-top:4px;"><b>${sevLabel}</b> &nbsp;·&nbsp; <b>${z.count}</b> detection${z.count!==1?'s':''}</div>
+        ${z.image ? `<img src="${z.image}" style="width:100%;border-radius:6px;margin-top:6px;max-height:90px;object-fit:cover;">` : ''}
+      </div>
+    `, { maxWidth:240 });
+
+    markers.push({ marker, severity: z.severity });
+    bounds.push([z.lat, z.lon]);
+  });
+
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, { padding:[40,40] });
+  } else {
+    map.setView([20.5937, 78.9629], 5);
+  }
+
+  /* ── Focus zone ── */
+  function focusZone(lat, lon) {
+    map.setView([lat, lon], 14, { animate:true });
+    const found = markers.find(m => {
+      const ll = m.marker.getLatLng();
+      return Math.abs(ll.lat-lat)<0.0001 && Math.abs(ll.lng-lon)<0.0001;
+    });
+    if (found) found.marker.openPopup();
+
+    document.querySelectorAll('.zone-item').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.zone-item').forEach(el => {
+      if (Math.abs(parseFloat(el.dataset.lat)-lat)<0.0001 &&
+          Math.abs(parseFloat(el.dataset.lon)-lon)<0.0001) {
+        el.classList.add('selected');
+        el.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      }
+    });
+  }
+
+  /* ── Filter ── */
+  function filterZones(sev, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.zone-item').forEach(el => {
+      el.style.display = (sev==='all' || el.dataset.sev===sev) ? '' : 'none';
+    });
+
+    markers.forEach(({ marker, severity }) => {
+      if (sev==='all' || severity===sev) { marker.addTo(map); }
+      else { marker.remove(); }
+    });
+  }
+</script>
+</body>
+</html>

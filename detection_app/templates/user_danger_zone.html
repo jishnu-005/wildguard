@@ -1,0 +1,861 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Danger Zone Map</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg:        #0d1a07;
+      --bg2:       #111f09;
+      --bg3:       #16260c;
+      --surface:   #192d0c;
+      --surface2:  #1f3710;
+      --border:    rgba(110,200,40,0.13);
+      --border2:   rgba(110,200,40,0.22);
+      --kiwi:      #7dc832;
+      --kiwi-dim:  #4f8a18;
+      --kiwi-glow: rgba(125,200,50,0.18);
+      --kiwi-text: #a8e060;
+      --white:     #e8f5d8;
+      --white2:    #c4dfa8;
+      --muted:     #6a8a55;
+      --red:       #f05555;
+      --red-dim:   rgba(240,85,85,0.12);
+      --amber:     #f0a020;
+      --amber-dim: rgba(240,160,32,0.12);
+      --blue:      #4488ff;
+      --blue-dim:  rgba(68,136,255,0.12);
+      --sidebar-w: 260px;
+      --topbar-h:  68px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(125,200,50,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(125,200,50,0.05) 0%, transparent 55%);
+    }
+    .noise {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    @keyframes fadeUp    { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes sosPulse  { 0%,100%{box-shadow:0 0 0 0 rgba(240,85,85,0.5)} 50%{box-shadow:0 0 0 14px rgba(240,85,85,0)} }
+    @keyframes warnPulse { 0%,100%{box-shadow:0 0 0 0 rgba(240,160,32,0.5)} 50%{box-shadow:0 0 0 10px rgba(240,160,32,0)} }
+    @keyframes blink     { 50%{opacity:0} }
+    @keyframes spin      { to{transform:rotate(360deg)} }
+
+    /* ══ SHELL ══════════════════════════════════════════ */
+    .shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+    /* ══ SIDEBAR ════════════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1.4rem 1.4rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .sidebar-logo-mark {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--kiwi), var(--kiwi-dim));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+      box-shadow: 0 0 20px var(--kiwi-glow);
+    }
+    .sidebar-logo-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem; letter-spacing: 0.08em; color: var(--white); line-height: 1;
+    }
+    .sidebar-logo-text span { color: var(--kiwi); }
+    .sidebar-logo-tagline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.5rem; letter-spacing: 0.15em; color: var(--muted);
+      text-transform: uppercase; margin-top: 2px;
+    }
+    .sidebar-section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.5rem; letter-spacing: 0.2em; color: var(--muted);
+      text-transform: uppercase; padding: 1.2rem 1.4rem 0.5rem; opacity: 0.6;
+    }
+    .nav-links { display: flex; flex-direction: column; gap: 2px; padding: 0 0.8rem; }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.85rem; border-radius: 10px;
+      text-decoration: none; color: var(--muted);
+      font-size: 0.88rem; font-weight: 500;
+      transition: background 0.15s, color 0.15s; position: relative;
+    }
+    .nav-link:hover { background: var(--surface); color: var(--white2); }
+    .nav-link.active { background: rgba(125,200,50,0.1); color: var(--kiwi-text); }
+    .nav-link.active::before {
+      content: ''; position: absolute; left: 0; top: 20%; bottom: 20%;
+      width: 3px; border-radius: 0 3px 3px 0; background: var(--kiwi);
+    }
+    .nav-icon { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .nav-badge {
+      margin-left: auto; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.5rem; font-weight: 700; padding: 2px 6px; border-radius: 20px;
+    }
+    .nav-badge.red   { background: var(--red-dim);  color: var(--red);  border: 1px solid rgba(240,85,85,0.25); }
+    .nav-badge.green { background: rgba(125,200,50,0.1); color: var(--kiwi); border: 1px solid rgba(125,200,50,0.25); }
+
+    .sidebar-sos {
+      margin: 1rem 0.8rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.9rem 1rem; border-radius: 12px;
+      background: rgba(240,85,85,0.08); border: 1px solid rgba(240,85,85,0.25);
+      text-decoration: none; color: var(--red);
+      font-weight: 700; font-size: 0.88rem;
+      transition: background 0.15s, transform 0.15s; position: relative; overflow: hidden;
+    }
+    .sidebar-sos:hover { background: rgba(240,85,85,0.14); transform: translateY(-1px); }
+    .sidebar-sos-icon {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: var(--red); display: flex; align-items: center; justify-content: center;
+      font-size: 0.95rem; animation: sosPulse 2.5s ease-in-out infinite;
+    }
+    .sidebar-sos-title { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.08em; }
+    .sidebar-sos-sub { font-size: 0.65rem; color: rgba(240,85,85,0.7); font-weight: 400; margin-top: 1px; }
+
+    .sidebar-user {
+      margin-top: auto; border-top: 1px solid var(--border);
+      padding: 1rem 1.2rem; display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-avatar {
+      width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--border2);
+      background: var(--surface); display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0; overflow: hidden; position: relative;
+    }
+    .sidebar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .sidebar-avatar-dot {
+      position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-radius: 50%;
+      background: #4ade80; border: 2px solid var(--bg2); animation: pulse 2s infinite;
+    }
+    .sidebar-user-name { font-weight: 700; font-size: 0.84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.1em; color: var(--kiwi); text-transform: uppercase;
+    }
+
+    /* ══ TOPBAR ═════════════════════════════════════════ */
+    .topbar {
+      position: fixed; top: 0;
+      left: var(--sidebar-w); right: 0; height: var(--topbar-h);
+      background: rgba(13,26,7,0.92); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; z-index: 90;
+      transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .topbar-left { display: flex; flex-direction: column; gap: 2px; }
+    .topbar-breadcrumb {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase;
+    }
+    .topbar-breadcrumb span { color: var(--kiwi); }
+    .topbar-title { font-weight: 700; font-size: 1.05rem; color: var(--white); }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.1em;
+      color: var(--muted); padding: 0.3rem 0.75rem;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .topbar-btn {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; cursor: pointer; text-decoration: none;
+      transition: background 0.2s, border-color 0.2s; position: relative;
+    }
+    .topbar-btn:hover { background: var(--surface2); border-color: var(--border2); }
+    .topbar-status {
+      display: flex; align-items: center; gap: 0.45rem;
+      padding: 0.3rem 0.75rem;
+      background: rgba(240,85,85,0.08); border: 1px solid rgba(240,85,85,0.25);
+      border-radius: 8px; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.58rem; color: var(--red); letter-spacing: 0.05em;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse 1.5s infinite; }
+
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px; cursor: pointer;
+      padding: 0.4rem; border: none; background: none;
+    }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--white2); border-radius: 2px; transition: all 0.3s; }
+
+    /* ══ MAIN WRAP ══════════════════════════════════════ */
+    .main-wrap {
+      margin-left: var(--sidebar-w);
+      padding-top: var(--topbar-h);
+      min-height: 100vh;
+      transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .main { padding: 2rem; max-width: 1400px; }
+
+    /* ══ PAGE HEADER ════════════════════════════════════ */
+    .page-header {
+      background: linear-gradient(135deg, #2a0808 0%, #1a1008 50%, #0d1a07 100%);
+      border: 1px solid rgba(240,85,85,0.2);
+      border-radius: 20px; padding: 1.8rem 2.2rem;
+      margin-bottom: 1.8rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+      position: relative; overflow: hidden;
+      animation: fadeUp 0.4s ease forwards;
+    }
+    .page-header::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(240,85,85,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,85,85,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .page-header::after {
+      content: '🗺️'; position: absolute; right: 2rem; top: 50%; transform: translateY(-50%);
+      font-size: 7rem; opacity: 0.06; pointer-events: none;
+    }
+    .ph-left { position: relative; z-index: 1; }
+    .ph-eyebrow {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.2em; text-transform: uppercase; color: rgba(240,85,85,0.7);
+      margin-bottom: 0.4rem;
+    }
+    .ph-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      letter-spacing: 0.06em; color: #fff; line-height: 1; margin-bottom: 0.5rem;
+    }
+    .ph-sub { font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.5; }
+    .ph-right {
+      display: flex; gap: 1rem; position: relative; z-index: 1; flex-shrink: 0; flex-wrap: wrap;
+    }
+    .ph-stat {
+      background: rgba(0,0,0,0.25); border-radius: 14px; padding: 1rem 1.2rem;
+      text-align: center; min-width: 80px; backdrop-filter: blur(10px);
+    }
+    .ph-stat.red    { border: 1px solid rgba(240,85,85,0.3); }
+    .ph-stat.amber  { border: 1px solid rgba(240,160,32,0.3); }
+    .ph-stat.green  { border: 1px solid rgba(125,200,50,0.3); }
+    .ph-stat-num {
+      font-family: 'Bebas Neue', sans-serif; font-size: 1.9rem;
+      letter-spacing: 0.05em; line-height: 1;
+    }
+    .ph-stat.red   .ph-stat-num { color: var(--red); }
+    .ph-stat.amber .ph-stat-num { color: var(--amber); }
+    .ph-stat.green .ph-stat-num { color: var(--kiwi); }
+    .ph-stat-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.48rem;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: rgba(255,255,255,0.45); margin-top: 3px;
+    }
+
+    /* ══ LEGEND BAR ═════════════════════════════════════ */
+    .legend-bar {
+      display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 0.85rem 1.3rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.45s ease forwards;
+    }
+    .legend-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
+      margin-right: 0.5rem;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.06em; color: var(--white2);
+    }
+    .legend-dot {
+      width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+    }
+    .legend-dot.critical { background: var(--red);   box-shadow: 0 0 8px rgba(240,85,85,0.7); }
+    .legend-dot.danger   { background: var(--amber); box-shadow: 0 0 8px rgba(240,160,32,0.6); }
+    .legend-dot.safe     { background: var(--kiwi);  box-shadow: 0 0 8px var(--kiwi-glow); }
+    .legend-divider { width: 1px; height: 16px; background: var(--border); }
+
+    /* ══ CONTENT GRID ═══════════════════════════════════ */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 1.6rem;
+      align-items: start;
+    }
+
+    /* ══ MAP CARD ════════════════════════════════════════ */
+    .map-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 18px; overflow: hidden;
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .map-card-header {
+      padding: 1.2rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .map-card-title-wrap { display: flex; align-items: center; gap: 0.6rem; }
+    .section-hd-line { width: 4px; height: 18px; background: var(--red); border-radius: 4px; }
+    .map-card-title { font-weight: 700; font-size: 1rem; }
+    .map-card-meta {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase;
+    }
+    .map-controls { display: flex; align-items: center; gap: 0.6rem; }
+    .map-ctrl-btn {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.35rem 0.85rem; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.06em; color: var(--muted);
+      cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .map-ctrl-btn:hover { background: var(--surface2); color: var(--white2); border-color: var(--border2); }
+    .map-ctrl-btn.active { background: rgba(240,85,85,0.1); color: var(--red); border-color: rgba(240,85,85,0.3); }
+
+    #map {
+      height: 520px; width: 100%;
+      background: #0d1a07;
+    }
+
+    /* Leaflet tile override — dark */
+    .leaflet-tile { filter: brightness(0.7) saturate(0.5) hue-rotate(80deg); }
+    .leaflet-container { background: #0d1a07 !important; }
+
+    /* Custom popup */
+    .leaflet-popup-content-wrapper {
+      background: var(--bg2) !important;
+      border: 1px solid var(--border2) !important;
+      border-radius: 12px !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+      color: var(--white) !important;
+      font-family: 'DM Sans', sans-serif !important;
+    }
+    .leaflet-popup-tip { background: var(--bg2) !important; }
+    .leaflet-popup-close-button { color: var(--muted) !important; }
+
+    .popup-inner { padding: 2px; min-width: 200px; }
+    .popup-severity {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 20px; display: inline-block; margin-bottom: 6px;
+    }
+    .popup-severity.critical { background: var(--red-dim); color: var(--red); border: 1px solid rgba(240,85,85,0.25); }
+    .popup-severity.danger   { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,160,32,0.25); }
+    .popup-severity.safe     { background: rgba(125,200,50,0.1); color: var(--kiwi); border: 1px solid rgba(125,200,50,0.25); }
+    .popup-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 2px; color: var(--white); }
+    .popup-addr  { font-size: 0.72rem; color: var(--muted); margin-bottom: 8px; line-height: 1.4; }
+    .popup-row   { display: flex; justify-content: space-between; gap: 0.5rem; margin-bottom: 4px; }
+    .popup-key   { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--muted); letter-spacing: 0.06em; }
+    .popup-val   { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--kiwi-text); }
+    .popup-animals { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .popup-animal-tag {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.48rem;
+      padding: 2px 7px; border-radius: 20px;
+      background: rgba(125,200,50,0.1); color: var(--kiwi); border: 1px solid rgba(125,200,50,0.2);
+    }
+    .popup-img {
+      width: 100%; border-radius: 8px; margin-top: 8px;
+      max-height: 100px; object-fit: cover;
+      border: 1px solid var(--border);
+    }
+
+    /* ══ ZONE LIST ══════════════════════════════════════ */
+    .zone-panel {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 18px; overflow: hidden;
+      animation: fadeUp 0.55s ease forwards;
+      display: flex; flex-direction: column;
+      max-height: 620px;
+    }
+    .zone-panel-header {
+      padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .zone-panel-title-wrap { display: flex; align-items: center; gap: 0.6rem; }
+    .zone-panel-title { font-weight: 700; font-size: 1rem; }
+
+    /* filter tabs */
+    .zone-filters {
+      display: flex; gap: 4px; padding: 0.8rem 1.2rem;
+      border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+    }
+    .zf-btn {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      letter-spacing: 0.08em; padding: 4px 12px; border-radius: 20px; cursor: pointer;
+      border: 1px solid var(--border); background: transparent; color: var(--muted);
+      transition: all 0.15s;
+    }
+    .zf-btn:hover { background: var(--surface); color: var(--white2); }
+    .zf-btn.active { }
+    .zf-btn.all.active    { background: rgba(125,200,50,0.1); color: var(--kiwi); border-color: rgba(125,200,50,0.3); }
+    .zf-btn.critical.active { background: var(--red-dim); color: var(--red); border-color: rgba(240,85,85,0.3); }
+    .zf-btn.danger.active   { background: var(--amber-dim); color: var(--amber); border-color: rgba(240,160,32,0.3); }
+
+    .zone-list { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    .zone-list::-webkit-scrollbar { width: 4px; }
+    .zone-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .zone-item {
+      display: flex; align-items: flex-start; gap: 0.85rem;
+      padding: 1rem 1.4rem; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s; position: relative;
+    }
+    .zone-item:last-child { border-bottom: none; }
+    .zone-item:hover { background: var(--surface); }
+    .zone-item.active-item { background: var(--surface); }
+    .zone-item::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    }
+    .zone-item.critical::before { background: var(--red); }
+    .zone-item.danger::before   { background: var(--amber); }
+    .zone-item.safe::before     { background: var(--kiwi); }
+
+    .zi-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px;
+    }
+    .zi-dot.critical { background: var(--red);   box-shadow: 0 0 8px rgba(240,85,85,0.7); animation: sosPulse 2s infinite; }
+    .zi-dot.danger   { background: var(--amber); box-shadow: 0 0 8px rgba(240,160,32,0.6); animation: warnPulse 2.2s infinite; }
+    .zi-dot.safe     { background: var(--kiwi);  box-shadow: 0 0 6px var(--kiwi-glow); }
+
+    .zi-body { flex: 1; min-width: 0; }
+    .zi-name {
+      font-weight: 700; font-size: 0.84rem; line-height: 1.2;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px;
+    }
+    .zi-addr {
+      font-size: 0.7rem; color: var(--muted); line-height: 1.3; margin-bottom: 5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .zi-meta {
+      display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .zi-pill {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.48rem;
+      letter-spacing: 0.08em; padding: 2px 7px; border-radius: 20px;
+    }
+    .zi-pill.critical { background: var(--red-dim); color: var(--red); border: 1px solid rgba(240,85,85,0.2); }
+    .zi-pill.danger   { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,160,32,0.2); }
+    .zi-pill.safe     { background: rgba(125,200,50,0.08); color: var(--kiwi); border: 1px solid rgba(125,200,50,0.2); }
+    .zi-count {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--muted);
+    }
+    .zi-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.48rem;
+      color: var(--muted); margin-left: auto;
+      flex-shrink: 0; white-space: nowrap;
+    }
+
+    .zone-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 3rem 1.5rem; color: var(--muted); text-align: center; gap: 0.5rem;
+    }
+    .zone-empty-icon { font-size: 2.5rem; opacity: 0.4; }
+    .zone-empty-text { font-size: 0.8rem; }
+
+    /* ══ SIDEBAR OVERLAY ═══════════════════════════════ */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; z-index: 99;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+    }
+
+    /* ══ RESPONSIVE ════════════════════════════════════ */
+    @media (max-width: 1100px) {
+      .content-grid { grid-template-columns: 1fr; }
+      .zone-panel { max-height: 400px; }
+    }
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { transform: translateX(-260px); width: 260px; }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+      .sidebar-overlay.show { opacity: 1; pointer-events: auto; }
+      .topbar { left: 0; }
+      .main-wrap { margin-left: 0; }
+      .hamburger { display: flex; }
+    }
+    @media (max-width: 700px) {
+      .main { padding: 1.1rem; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+      .ph-right { display: grid; grid-template-columns: repeat(3,1fr); width: 100%; }
+      .ph-stat { min-width: unset; }
+      .topbar { padding: 0 1.1rem; }
+      #map { height: 380px; }
+      .map-controls { display: none; }
+    }
+    @media (max-width: 480px) {
+      .topbar-time { display: none; }
+      .ph-right { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="shell">
+
+  <!-- ══ SIDEBAR ══════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <a href="{% url 'user_home' %}" class="sidebar-logo">
+      <div class="sidebar-logo-mark">🐾</div>
+      <div>
+        <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+        <div class="sidebar-logo-tagline">// Wildlife Protection Network</div>
+      </div>
+    </a>
+
+    <div class="sidebar-section-label">// Navigation</div>
+    <nav class="nav-links">
+      <a href="{% url 'user_home' %}" class="nav-link">
+        <span class="nav-icon">🏠</span> Dashboard
+      </a>
+      <a href="{% url 'user_alerts_list' %}" class="nav-link">
+        <span class="nav-icon">🔔</span> Wildlife Alerts
+      </a>
+      <a href="{% url 'user_danger_zone' %}" class="nav-link active">
+        <span class="nav-icon">🗺️</span> Danger Zone Map
+      </a>
+      <a href="{% url 'user_report' %}" class="nav-link">
+        <span class="nav-icon">📋</span> My Reports
+      </a>
+    </nav>
+
+    <div class="sidebar-section-label" style="margin-top:0.5rem;">// Account</div>
+    <nav class="nav-links">
+      <a href="/user_profile/" class="nav-link"><span class="nav-icon">👤</span> My Profile</a>
+    </nav>
+
+    <a href="{% url 'sos_report' %}" class="sidebar-sos">
+      <div class="sidebar-sos-icon">🚨</div>
+      <div class="sidebar-sos-info">
+        <div class="sidebar-sos-title">SOS Emergency</div>
+        <div class="sidebar-sos-sub">Report instantly</div>
+      </div>
+    </a>
+
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">
+        {% if user.profile_image %}<img src="{{ user.profile_image.url }}" alt="{{ user.name }}"/>{% else %}🌿{% endif %}
+        <div class="sidebar-avatar-dot"></div>
+      </div>
+      <div>
+        <div class="sidebar-user-name">{{ user.name|default:"Wildlife Watcher" }}</div>
+        <div class="sidebar-user-role">WG Citizen</div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ══ TOPBAR ══════════════════════════════════════ -->
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <button class="hamburger" id="hamburgerBtn" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-left">
+        <div class="topbar-breadcrumb">WildGuard / <span>Danger Zone Map</span></div>
+        <div class="topbar-title">Danger Zones</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-status">
+        <span class="status-dot"></span>
+        {% if critical_zones %}{{ critical_zones }} Critical{% else %}Monitoring{% endif %}
+      </div>
+      <div class="topbar-time" id="liveClock">00:00:00</div>
+      <a href="/user_profile/" class="topbar-btn">👤</a>
+      <a href="/logout/" class="topbar-btn"><i class="fa-solid fa-right-from-bracket"></i></a>
+    </div>
+  </header>
+
+  <!-- ══ MAIN ════════════════════════════════════════ -->
+  <div class="main-wrap">
+  <div class="main">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-eyebrow">// Live Wildlife Monitoring · Danger Zones</div>
+        <div class="ph-title">Danger Zone Map</div>
+        <div class="ph-sub">Locations with multiple animal detections are flagged as danger zones. Stay alert and avoid marked areas.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-stat red">
+          <div class="ph-stat-num">{{ critical_zones }}</div>
+          <div class="ph-stat-label">Critical</div>
+        </div>
+        <div class="ph-stat amber">
+          <div class="ph-stat-num">{{ total_zones }}</div>
+          <div class="ph-stat-label">Danger Zones</div>
+        </div>
+        <div class="ph-stat green">
+          <div class="ph-stat-num">{{ total_detections }}</div>
+          <div class="ph-stat-label">Total Detections</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="legend-bar">
+      <span class="legend-label">Legend :</span>
+      <div class="legend-item"><span class="legend-dot critical"></span>Critical (5+ detections)</div>
+      <div class="legend-divider"></div>
+      <div class="legend-item"><span class="legend-dot danger"></span>Danger Zone (2–4 detections)</div>
+      <div class="legend-divider"></div>
+      <div class="legend-item"><span class="legend-dot safe"></span>Single Detection</div>
+    </div>
+
+    <!-- CONTENT GRID -->
+    <div class="content-grid">
+
+      <!-- MAP -->
+      <div class="map-card">
+        <div class="map-card-header">
+          <div class="map-card-title-wrap">
+            <div class="section-hd-line"></div>
+            <div>
+              <div class="map-card-title">Live Detection Map</div>
+              <div class="map-card-meta">— {{ zones|length }} location(s) plotted</div>
+            </div>
+          </div>
+          <div class="map-controls">
+            <button class="map-ctrl-btn active" id="btnAll" onclick="filterMap('all')">All Zones</button>
+            <button class="map-ctrl-btn" id="btnDanger" onclick="filterMap('danger')">⚠ Danger Only</button>
+            <button class="map-ctrl-btn" id="btnCritical" onclick="filterMap('critical')">🔴 Critical</button>
+          </div>
+        </div>
+        <div id="map"></div>
+      </div>
+
+      <!-- ZONE LIST -->
+      <div class="zone-panel">
+        <div class="zone-panel-header">
+          <div class="zone-panel-title-wrap">
+            <div class="section-hd-line" style="background:var(--amber);"></div>
+            <div class="zone-panel-title">Zone List</div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:0.52rem;color:var(--muted);">{{ zones|length }} locations</span>
+        </div>
+
+        <div class="zone-filters">
+          <button class="zf-btn all active" id="zf-all"      onclick="zoneFilter('all')">All</button>
+          <button class="zf-btn critical"   id="zf-critical" onclick="zoneFilter('critical')">🔴 Critical</button>
+          <button class="zf-btn danger"     id="zf-danger"   onclick="zoneFilter('danger')">⚠ Danger</button>
+        </div>
+
+        <div class="zone-list" id="zoneList">
+          {% if zones %}
+            {% for z in zones %}
+            <div class="zone-item {{ z.severity }}"
+                 data-lat="{{ z.lat }}" data-lon="{{ z.lon }}"
+                 data-severity="{{ z.severity }}"
+                 onclick="flyToZone({{ z.lat }}, {{ z.lon }})">
+              <span class="zi-dot {{ z.severity }}"></span>
+              <div class="zi-body">
+                <div class="zi-name">{{ z.animals|join:", "|default:"Unknown Animal" }}</div>
+                <div class="zi-addr">{{ z.address|truncatechars:48 }}</div>
+                <div class="zi-meta">
+                  <span class="zi-pill {{ z.severity }}">
+                    {% if z.severity == "critical" %}CRITICAL
+                    {% elif z.severity == "danger" %}DANGER ZONE
+                    {% else %}SINGLE{% endif %}
+                  </span>
+                  <span class="zi-count">{{ z.count }} detection{{ z.count|pluralize }}</span>
+                  {% if z.latest_at %}
+                  <span class="zi-time">{{ z.latest_at|date:"d M H:i" }}</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="zone-empty">
+              <div class="zone-empty-icon">🌿</div>
+              <div class="zone-empty-text">No detections recorded yet.</div>
+            </div>
+          {% endif %}
+        </div>
+      </div><!-- /zone-panel -->
+
+    </div><!-- /content-grid -->
+
+  </div><!-- /main -->
+  </div><!-- /main-wrap -->
+</div><!-- /shell -->
+
+<script>
+/* ── Zone data from Django ─────────────────────────── */
+const ZONES = {{ zones_json|safe }};
+
+/* ── Map init ─────────────────────────────────────── */
+const map = L.map('map', {
+  zoomControl: true,
+  attributionControl: false
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+}).addTo(map);
+
+// Add a subtle attribution
+L.control.attribution({ prefix: false })
+  .addAttribution('© OpenStreetMap')
+  .addTo(map);
+
+/* ── Marker styles ────────────────────────────────── */
+function makeIcon(severity) {
+  const colours = {
+    critical: { fill: '#f05555', ring: 'rgba(240,85,85,0.4)', size: 22 },
+    danger:   { fill: '#f0a020', ring: 'rgba(240,160,32,0.35)', size: 18 },
+    safe:     { fill: '#7dc832', ring: 'rgba(125,200,50,0.3)',  size: 14 },
+  };
+  const c = colours[severity] || colours.safe;
+  const s = c.size;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s+16}" height="${s+16}" viewBox="0 0 ${s+16} ${s+16}">
+    <circle cx="${(s+16)/2}" cy="${(s+16)/2}" r="${s/2+6}" fill="${c.ring}"/>
+    <circle cx="${(s+16)/2}" cy="${(s+16)/2}" r="${s/2}" fill="${c.fill}"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: '',
+    iconSize:   [s+16, s+16],
+    iconAnchor: [(s+16)/2, (s+16)/2],
+    popupAnchor:[0, -((s+16)/2)],
+  });
+}
+
+/* ── Build popup HTML ─────────────────────────────── */
+function popupHTML(z) {
+  const animals = z.animals.map(a => `<span class="popup-animal-tag">${a}</span>`).join('');
+  const img     = z.image ? `<img src="${z.image}" class="popup-img" alt="Detection"/>` : '';
+  return `
+    <div class="popup-inner">
+      <span class="popup-severity ${z.severity}">${z.severity.toUpperCase()}</span>
+      <div class="popup-title">${z.animals.join(', ') || 'Unknown'}</div>
+      <div class="popup-addr">${z.address}</div>
+      <div class="popup-row">
+        <span class="popup-key">Detections</span>
+        <span class="popup-val">${z.count}</span>
+      </div>
+      <div class="popup-row">
+        <span class="popup-key">Last Seen</span>
+        <span class="popup-val">${z.latest_at}</span>
+      </div>
+      <div class="popup-row">
+        <span class="popup-key">Coords</span>
+        <span class="popup-val">${z.lat.toFixed(4)}, ${z.lon.toFixed(4)}</span>
+      </div>
+      <div class="popup-animals">${animals}</div>
+      ${img}
+    </div>`;
+}
+
+/* ── Place all markers ────────────────────────────── */
+let allMarkers = [];
+const bounds   = [];
+
+ZONES.forEach(z => {
+  const m = L.marker([z.lat, z.lon], { icon: makeIcon(z.severity) })
+    .bindPopup(popupHTML(z), { maxWidth: 260 });
+  m._zdata = z;
+  allMarkers.push(m);
+  m.addTo(map);
+  bounds.push([z.lat, z.lon]);
+});
+
+if (bounds.length) {
+  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+} else {
+  map.setView([20.5937, 78.9629], 5); // Default India
+}
+
+/* ── Filter map markers ────────────────────────────── */
+let activeFilter = 'all';
+
+function filterMap(f) {
+  activeFilter = f;
+  allMarkers.forEach(m => {
+    const show = f === 'all' || m._zdata.severity === f ||
+                 (f === 'danger' && (m._zdata.severity === 'danger' || m._zdata.severity === 'critical'));
+    show ? m.addTo(map) : map.removeLayer(m);
+  });
+  // update button styles
+  ['btnAll','btnDanger','btnCritical'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const map_ = { all:'btnAll', danger:'btnDanger', critical:'btnCritical' };
+  document.getElementById(map_[f]).classList.add('active');
+}
+
+/* ── Fly to zone from list ─────────────────────────── */
+function flyToZone(lat, lon) {
+  map.flyTo([lat, lon], 15, { duration: 1.2 });
+  const m = allMarkers.find(m => Math.abs(m._zdata.lat - lat) < 0.00001 && Math.abs(m._zdata.lon - lon) < 0.00001);
+  if (m) setTimeout(() => m.openPopup(), 1300);
+
+  // highlight list item
+  document.querySelectorAll('.zone-item').forEach(el => el.classList.remove('active-item'));
+  event.currentTarget && event.currentTarget.classList.add('active-item');
+}
+
+/* ── Zone list filter ──────────────────────────────── */
+function zoneFilter(f) {
+  document.querySelectorAll('.zf-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('zf-' + f).classList.add('active');
+
+  document.querySelectorAll('.zone-item').forEach(item => {
+    const sev = item.dataset.severity;
+    const show = f === 'all' || sev === f ||
+                 (f === 'danger' && (sev === 'danger' || sev === 'critical'));
+    item.style.display = show ? '' : 'none';
+  });
+}
+
+/* ── Live clock ────────────────────────────────────── */
+function tick() {
+  const n = new Date();
+  document.getElementById('liveClock').textContent =
+    String(n.getHours()).padStart(2,'0') + ':' +
+    String(n.getMinutes()).padStart(2,'0') + ':' +
+    String(n.getSeconds()).padStart(2,'0');
+}
+tick(); setInterval(tick, 1000);
+
+/* ── Sidebar toggle ────────────────────────────────── */
+const sidebar  = document.getElementById('sidebar');
+const overlay  = document.getElementById('sidebarOverlay');
+const hamburger = document.getElementById('hamburgerBtn');
+function openSidebar()  { sidebar.classList.add('open'); overlay.classList.add('show'); document.body.style.overflow='hidden'; }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); document.body.style.overflow=''; }
+hamburger.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+overlay.addEventListener('click', closeSidebar);
+</script>
+</body>
+</html>

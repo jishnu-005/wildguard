@@ -1,0 +1,574 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Officer Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --black:            #ffffff;
+      --black-2:          #f3f8ee;
+      --black-3:          #e8f2df;
+      --black-4:          #ddecd0;
+      --kiwi:             #5a9e10;
+      --kiwi-bright:      #6dba18;
+      --kiwi-dim:         #3d7008;
+      --kiwi-glow:        rgba(90,158,16,0.15);
+      --kiwi-glow-strong: rgba(90,158,16,0.30);
+      --white:            #1a2e0e;
+      --grey:             #5a7a4a;
+      --red:              #e05555;
+      --amber:            #d97706;
+      --blue:             #2563eb;
+      --sidebar-w:        260px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    .page-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+
+    /* ══ SIDEBAR ══ */
+    .sidebar {
+      position: fixed; top:0; left:0; bottom:0;
+      width: var(--sidebar-w);
+      background: rgba(243,248,238,0.97);
+      border-right: 1px solid rgba(90,158,16,0.15);
+      display: flex; flex-direction: column;
+      z-index: 200; backdrop-filter: blur(12px);
+      transition: transform 0.3s ease;
+    }
+    .sidebar-logo { display:flex; align-items:center; gap:0.65rem; padding:1.4rem 1.4rem 1.2rem; border-bottom:1px solid rgba(90,158,16,0.12); text-decoration:none; flex-shrink:0; }
+    .sidebar-logo-icon { width:36px; height:36px; background:var(--kiwi); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; box-shadow:0 0 16px var(--kiwi-glow-strong); flex-shrink:0; }
+    .sidebar-logo-text { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.12em; color:var(--white); line-height:1; }
+    .sidebar-logo-text span { color:var(--kiwi); }
+    .sidebar-logo-sub { font-family:'Space Mono',monospace; font-size:0.48rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); margin-top:1px; }
+
+    .officer-badge { margin:1rem 1.2rem 0.8rem; background:rgba(90,158,16,0.07); border:1px solid rgba(90,158,16,0.18); border-radius:10px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.7rem; flex-shrink:0; }
+    .officer-avatar { width:40px; height:40px; border-radius:50%; background:var(--black-3); border:2px solid rgba(90,158,16,0.3); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; overflow:hidden; }
+    .officer-avatar img { width:100%; height:100%; object-fit:cover; }
+    .officer-info { min-width:0; flex:1; }
+    .officer-name { font-weight:700; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .officer-role { font-family:'Space Mono',monospace; font-size:0.54rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--kiwi); margin-top:1px; }
+    .officer-id-tag { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.08em; color:var(--grey); margin-top:2px; }
+    .officer-dot { width:8px; height:8px; border-radius:50%; background:var(--kiwi); margin-left:auto; flex-shrink:0; animation:pulse 2s infinite; box-shadow:0 0 6px var(--kiwi); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .sidebar-nav { flex:1; overflow-y:auto; padding:0.6rem 0.8rem; scrollbar-width:thin; scrollbar-color:rgba(90,158,16,0.2) transparent; }
+    .nav-section-label { font-family:'Space Mono',monospace; font-size:0.52rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--grey); padding:0.8rem 0.6rem 0.4rem; opacity:0.7; }
+    .nav-item { display:flex; align-items:center; gap:0.7rem; padding:0.62rem 0.9rem; border-radius:8px; text-decoration:none; color:var(--grey); font-size:0.84rem; font-weight:600; transition:background 0.2s,color 0.2s; cursor:pointer; margin-bottom:2px; }
+    .nav-item:hover { background:rgba(90,158,16,0.08); color:var(--white); }
+    .nav-item.active { background:rgba(90,158,16,0.12); color:var(--kiwi); border-left:3px solid var(--kiwi); }
+    .nav-icon { font-size:1rem; flex-shrink:0; width:20px; text-align:center; }
+    .nav-badge { margin-left:auto; background:var(--kiwi); color:#fff; font-family:'Space Mono',monospace; font-size:0.52rem; font-weight:700; padding:1px 7px; border-radius:20px; min-width:20px; text-align:center; }
+    .nav-badge.red   { background:var(--red); }
+    .nav-badge.amber { background:var(--amber); }
+    .nav-badge.blue  { background:var(--blue); }
+
+    .sidebar-footer { padding:0.8rem; border-top:1px solid rgba(90,158,16,0.12); flex-shrink:0; }
+    .btn-logout { width:100%; display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.9rem; background:rgba(224,85,85,0.06); border:1px solid rgba(224,85,85,0.2); border-radius:8px; color:var(--red); font-family:'Space Mono',monospace; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; text-decoration:none; transition:background 0.2s,border-color 0.2s; }
+    .btn-logout:hover { background:rgba(224,85,85,0.12); border-color:rgba(224,85,85,0.4); }
+
+    /* ══ TOPBAR ══ */
+    .topbar { position:fixed; top:0; left:var(--sidebar-w); right:0; height:62px; background:rgba(255,255,255,0.95); border-bottom:1px solid rgba(90,158,16,0.12); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; padding:0 2rem; z-index:150; transition:left 0.3s; }
+    .topbar-left { display:flex; align-items:center; gap:0.8rem; }
+    .topbar-page-label { font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); }
+    .topbar-page-title { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.06em; color:var(--white); }
+    .topbar-sep { width:1px; height:24px; background:rgba(90,158,16,0.2); }
+    .topbar-right { display:flex; align-items:center; gap:1rem; }
+    .topbar-time { font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; color:var(--grey); }
+    .topbar-alert-dot { width:10px; height:10px; border-radius:50%; background:var(--kiwi); animation:pulse 1.5s infinite; box-shadow:0 0 8px var(--kiwi); }
+
+    .hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:4px; background:none; border:none; }
+    .hamburger span { display:block; width:22px; height:2px; background:var(--kiwi); border-radius:2px; }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.6); backdrop-filter:blur(2px); z-index:190; }
+    .sidebar-overlay.open { display:block; }
+
+    .scanline-bar { position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--kiwi),transparent); opacity:0; animation:scanBar 8s ease-in-out infinite; }
+    @keyframes scanBar { 0%{left:-100%;opacity:0} 10%{opacity:0.4} 90%{opacity:0.2} 100%{left:100%;opacity:0} }
+
+    /* ══ MAIN ══ */
+    .main { margin-left:var(--sidebar-w); padding-top:62px; min-height:100vh; position:relative; z-index:1; transition:margin-left 0.3s; }
+    .content { padding:2rem 2rem 3rem; max-width:1200px; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ══ PAGE HEADER ══ */
+    .page-header {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:2rem; flex-wrap:wrap; gap:1rem;
+      animation:fadeUp 0.4s ease forwards; opacity:0;
+    }
+    .page-header-left { display:flex; align-items:center; gap:0.8rem; }
+    .page-header-icon { width:44px; height:44px; background:rgba(90,158,16,0.1); border:1px solid rgba(90,158,16,0.25); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; }
+    .page-header-label { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); }
+    .page-header-title { font-family:'Bebas Neue',sans-serif; font-size:1.7rem; letter-spacing:0.06em; color:var(--white); line-height:1; }
+    .btn-edit {
+      display:inline-flex; align-items:center; gap:0.5rem;
+      padding:0.7rem 1.4rem; background:var(--kiwi); border:none; border-radius:10px;
+      color:#fff; font-family:'Space Mono',monospace; font-size:0.68rem; font-weight:700;
+      letter-spacing:0.12em; text-transform:uppercase; text-decoration:none; cursor:pointer;
+      transition:background 0.2s,transform 0.15s,box-shadow 0.2s;
+      box-shadow:0 4px 14px var(--kiwi-glow-strong);
+    }
+    .btn-edit:hover { background:var(--kiwi-bright); transform:translateY(-2px); box-shadow:0 6px 20px var(--kiwi-glow-strong); }
+
+    /* ══ PROFILE HERO ══ */
+    .profile-hero {
+      background:linear-gradient(135deg, var(--kiwi) 0%, var(--kiwi-dim) 100%);
+      border-radius:16px; padding:2.5rem 2rem; margin-bottom:1.5rem;
+      display:flex; align-items:center; gap:2rem;
+      position:relative; overflow:hidden;
+      animation:fadeUp 0.5s ease forwards; opacity:0;
+      flex-wrap:wrap;
+    }
+    .profile-hero::before {
+      content:''; position:absolute; inset:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px);
+      background-size:32px 32px;
+    }
+    .profile-hero::after {
+      content:'🪖'; position:absolute; right:2.5rem; top:50%;
+      transform:translateY(-50%); font-size:7rem; opacity:0.1; pointer-events:none;
+    }
+    .profile-avatar-wrap { position:relative; flex-shrink:0; z-index:1; }
+    .profile-avatar {
+      width:100px; height:100px; border-radius:50%;
+      border:3px solid rgba(255,255,255,0.5);
+      background:rgba(255,255,255,0.15);
+      display:flex; align-items:center; justify-content:center;
+      font-size:2.8rem; overflow:hidden;
+      box-shadow:0 0 0 6px rgba(255,255,255,0.12);
+    }
+    .profile-avatar img { width:100%; height:100%; object-fit:cover; }
+    .profile-status-dot {
+      position:absolute; bottom:4px; right:4px;
+      width:16px; height:16px; border-radius:50%;
+      border:2px solid rgba(255,255,255,0.8);
+    }
+    .profile-status-dot.active { background:#4ade80; animation:pulse 2s infinite; }
+    .profile-status-dot.inactive { background:var(--red); }
+    .profile-hero-info { z-index:1; flex:1; min-width:0; }
+    .profile-hero-name { font-family:'Bebas Neue',sans-serif; font-size:clamp(1.6rem,3vw,2.4rem); letter-spacing:0.06em; color:#fff; line-height:1; }
+    .profile-hero-role { font-family:'Space Mono',monospace; font-size:0.68rem; letter-spacing:0.14em; text-transform:uppercase; color:rgba(255,255,255,0.75); margin-top:0.4rem; }
+    .profile-hero-chips { display:flex; flex-wrap:wrap; gap:0.6rem; margin-top:1rem; }
+    .hero-chip { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); border-radius:20px; padding:0.3rem 0.85rem; font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.08em; color:#fff; }
+    .profile-hero-stats { display:flex; gap:1.5rem; z-index:1; flex-wrap:wrap; }
+    .hero-stat { text-align:center; }
+    .hero-stat-val { font-family:'Bebas Neue',sans-serif; font-size:1.8rem; color:#fff; line-height:1; }
+    .hero-stat-label { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.12em; text-transform:uppercase; color:rgba(255,255,255,0.65); margin-top:2px; }
+
+    /* ══ PANEL ══ */
+    .panel { background:var(--black-2); border:1px solid rgba(90,158,16,0.15); border-radius:12px; overflow:hidden; animation:fadeUp 0.6s ease forwards; opacity:0; }
+    .panel-header { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.4rem; border-bottom:1px solid rgba(90,158,16,0.1); background:rgba(90,158,16,0.03); }
+    .panel-title { font-family:'Space Mono',monospace; font-size:0.63rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--kiwi); display:flex; align-items:center; gap:0.5rem; }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:var(--kiwi); animation:pulse 1.5s infinite; display:inline-block; }
+    .live-dot.red { background:var(--red); }
+    .panel-action { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.08em; color:var(--kiwi); text-decoration:none; opacity:0.8; transition:opacity 0.2s; }
+    .panel-action:hover { opacity:1; }
+    .panel-body { padding:1.4rem; }
+
+    /* ══ LAYOUT ══ */
+    .profile-grid { display:grid; grid-template-columns:2fr 1fr; gap:1.4rem; margin-bottom:1.4rem; }
+
+    /* ══ INFO FIELDS ══ */
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.1rem; }
+    .info-field { display:flex; flex-direction:column; gap:0.3rem; }
+    .info-field.full { grid-column:1 / -1; }
+    .info-label { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--grey); opacity:0.8; }
+    .info-value { font-size:0.88rem; font-weight:600; background:var(--black-3); border:1px solid rgba(90,158,16,0.15); border-radius:8px; padding:0.7rem 0.9rem; display:flex; align-items:center; gap:0.55rem; word-break:break-all; }
+    .info-value-icon { font-size:0.9rem; flex-shrink:0; }
+    .info-value.highlight { border-color:rgba(90,158,16,0.3); background:rgba(90,158,16,0.06); color:var(--kiwi); font-weight:700; }
+    .info-value.na { color:var(--grey); font-style:italic; font-weight:400; }
+
+    /* ══ STATUS BADGE ══ */
+    .status-badge { display:inline-flex; align-items:center; gap:0.5rem; padding:0.7rem 0.9rem; border-radius:8px; font-family:'Space Mono',monospace; font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; }
+    .status-badge.active { background:rgba(90,158,16,0.1); border:1px solid rgba(90,158,16,0.25); color:var(--kiwi); }
+    .status-badge.inactive { background:rgba(224,85,85,0.08); border:1px solid rgba(224,85,85,0.2); color:var(--red); }
+    .status-badge-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .status-badge.active .status-badge-dot { background:var(--kiwi); box-shadow:0 0 6px var(--kiwi); animation:pulse 2s infinite; }
+    .status-badge.inactive .status-badge-dot { background:var(--red); }
+
+    /* ══ OVERVIEW TILES ══ */
+    .overview-tiles { display:flex; flex-direction:column; gap:0.7rem; }
+    .overview-tile { display:flex; align-items:center; gap:0.8rem; padding:0.85rem 1rem; background:var(--black-3); border-radius:8px; border:1px solid rgba(90,158,16,0.1); }
+    .tile-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
+    .tile-icon.kiwi  { background:rgba(90,158,16,0.1);  border:1px solid rgba(90,158,16,0.2); }
+    .tile-icon.amber { background:rgba(217,119,6,0.1);  border:1px solid rgba(217,119,6,0.2); }
+    .tile-icon.blue  { background:rgba(37,99,235,0.1);  border:1px solid rgba(37,99,235,0.2); }
+    .tile-icon.red   { background:rgba(224,85,85,0.1);  border:1px solid rgba(224,85,85,0.2); }
+    .tile-info { flex:1; min-width:0; }
+    .tile-label { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--grey); }
+    .tile-value { font-weight:700; font-size:0.86rem; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* ══ CREATED STAMP ══ */
+    .created-stamp { display:flex; align-items:center; gap:0.5rem; font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.08em; color:var(--grey); }
+    .created-dot { width:5px; height:5px; border-radius:50%; background:var(--kiwi); }
+
+    /* ══ RANK BANNER ══ */
+    .rank-banner {
+      background:linear-gradient(135deg, rgba(37,99,235,0.08) 0%, rgba(37,99,235,0.03) 100%);
+      border:1px solid rgba(37,99,235,0.2); border-radius:10px;
+      padding:1rem 1.2rem; display:flex; align-items:center; gap:1rem; margin-bottom:0.7rem;
+    }
+    .rank-icon { width:42px; height:42px; border-radius:10px; background:rgba(37,99,235,0.1); border:1px solid rgba(37,99,235,0.2); display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+    .rank-info { flex:1; min-width:0; }
+    .rank-title { font-weight:700; font-size:0.86rem; color:var(--blue); }
+    .rank-sub { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--grey); margin-top:2px; }
+
+    /* ══ RESPONSIVE ══ */
+    @media (max-width:1024px) {
+      :root { --sidebar-w:220px; }
+      .content { padding:1.5rem 1.5rem 3rem; }
+      .profile-grid { grid-template-columns:1fr; }
+    }
+    @media (max-width:900px) {
+      .info-grid { grid-template-columns:1fr; }
+    }
+    @media (max-width:768px) {
+      :root { --sidebar-w:260px; }
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); box-shadow:4px 0 30px rgba(90,158,16,0.15); }
+      .topbar { left:0; }
+      .hamburger { display:flex; }
+      .main { margin-left:0; }
+      .content { padding:1.2rem 1rem 3rem; }
+      .profile-hero { padding:1.8rem 1.4rem; gap:1.4rem; }
+      .profile-avatar { width:80px; height:80px; font-size:2.2rem; }
+      .profile-hero-stats { gap:1rem; }
+      .page-header { flex-direction:column; align-items:flex-start; }
+    }
+    @media (max-width:480px) {
+      .profile-hero::after { display:none; }
+      .profile-hero-stats { display:none; }
+      .topbar-time { display:none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <a href="{% url 'officer_home' %}" class="sidebar-logo">
+    <div class="sidebar-logo-icon">🐾</div>
+    <div>
+      <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+      <div class="sidebar-logo-sub">Officer Portal</div>
+    </div>
+  </a>
+
+  <div class="officer-badge">
+    <div class="officer-avatar">
+      {% if officer.profile_image %}
+        <img src="{{ officer.profile_image.url }}" alt="{{ officer.name }}"/>
+      {% else %}🪖{% endif %}
+    </div>
+    <div class="officer-info">
+      <div class="officer-name">{{ officer.name|default:"Officer" }}</div>
+      <div class="officer-role">{{ officer.designation|default:"Forest Officer" }}</div>
+      <div class="officer-id-tag">{{ officer.officer_id|default:"—" }}</div>
+    </div>
+    <div class="officer-dot"></div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-item" href="{% url 'officer_home' %}">
+      <span class="nav-icon">📊</span>Dashboard
+    </a>
+
+    <div class="nav-section-label">Alerts</div>
+    <a class="nav-item" href="{% url 'officer_alerts_list' %}">
+      <span class="nav-icon">🔔</span>Wildlife Alerts
+    </a>
+    <a class="nav-item" href="{% url 'officer_sos_report_list' %}">
+      <span class="nav-icon">🚨</span>Emergency Reports
+    </a>
+
+    <div class="nav-section-label">Field</div>
+    <a class="nav-item" href="{% url 'officer_danger_zone' %}">
+      <span class="nav-icon">⚠️</span>Danger Zones
+    </a>
+
+    <div class="nav-section-label">My Account</div>
+    <a class="nav-item active" href="{% url 'officer_profile' %}">
+      <span class="nav-icon">👤</span>My Profile
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="{% url 'logout' %}" class="btn-logout"><span>⏏</span> Log Out</a>
+  </div>
+</aside>
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-sep"></div>
+    <div>
+      <div class="topbar-page-label">// Officer Portal</div>
+      <div class="topbar-page-title">MY PROFILE</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-time" id="liveClock"></div>
+    <div class="topbar-alert-dot"></div>
+  </div>
+  <div class="scanline-bar"></div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+<div class="content">
+
+  <!-- ── PAGE HEADER ── -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-header-icon">🪖</div>
+      <div>
+        <div class="page-header-label">// My Account</div>
+        <div class="page-header-title">OFFICER PROFILE</div>
+      </div>
+    </div>
+    <a href="{% url 'officer_edit_profile' officer.id %}" class="btn-edit">✏️ &nbsp;Edit Profile</a>
+  </div>
+
+  <!-- ── PROFILE HERO ── -->
+  <div class="profile-hero">
+    <div class="profile-avatar-wrap">
+      <div class="profile-avatar">
+        {% if officer.profile_image %}
+          <img src="{{ officer.profile_image.url }}" alt="{{ officer.name }}"/>
+        {% else %}🪖{% endif %}
+      </div>
+      <div class="profile-status-dot {% if officer.status %}active{% else %}inactive{% endif %}"></div>
+    </div>
+    <div class="profile-hero-info">
+      <div class="profile-hero-name">{{ officer.name|default:"Forest Officer" }}</div>
+      <div class="profile-hero-role">{{ officer.designation|default:"Forest Officer" }} &nbsp;·&nbsp; {{ officer.officer_id|default:"—" }}</div>
+      <div class="profile-hero-chips">
+        <span class="hero-chip">🌲 {{ officer.forest_range|default:"Range N/A" }}</span>
+        <span class="hero-chip">📍 {{ officer.location_address|default:"Location N/A" }}</span>
+        <span class="hero-chip">📧 {{ officer.email|default:"—" }}</span>
+        {% if officer.status %}
+          <span class="hero-chip" style="background:rgba(74,222,128,0.2);border-color:rgba(74,222,128,0.4);">✅ Active</span>
+        {% else %}
+          <span class="hero-chip" style="background:rgba(224,85,85,0.2);border-color:rgba(224,85,85,0.4);">🔴 Inactive</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="profile-hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-val">{{ officer.created_at|date:"Y" }}</div>
+        <div class="hero-stat-label">Since</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INFO + SIDEBAR ── -->
+  <div class="profile-grid">
+
+    <!-- LEFT: Details -->
+    <div class="panel" style="animation-delay:0.1s;">
+      <div class="panel-header">
+        <div class="panel-title"><span class="live-dot"></span> Officer Information</div>
+        <a href="{% url 'officer_edit_profile' officer.id %}" class="panel-action">Edit →</a>
+      </div>
+      <div class="panel-body">
+        <div class="info-grid">
+
+          <div class="info-field">
+            <div class="info-label">Full Name</div>
+            <div class="info-value highlight">
+              <span class="info-value-icon">🪖</span>{{ officer.name|default:"—" }}
+            </div>
+          </div>
+
+          <div class="info-field">
+            <div class="info-label">Officer ID</div>
+            <div class="info-value highlight">
+              <span class="info-value-icon">🔑</span>{{ officer.officer_id|default:"—" }}
+            </div>
+          </div>
+
+          <div class="info-field">
+            <div class="info-label">Designation</div>
+            <div class="info-value">
+              <span class="info-value-icon">🏅</span>{{ officer.designation|default:"—" }}
+            </div>
+          </div>
+
+          <div class="info-field">
+            <div class="info-label">Contact Phone</div>
+            <div class="info-value">
+              <span class="info-value-icon">📞</span>{{ officer.phone|default:"—" }}
+            </div>
+          </div>
+
+          <div class="info-field full">
+            <div class="info-label">Contact Email</div>
+            <div class="info-value">
+              <span class="info-value-icon">📧</span>{{ officer.email|default:"—" }}
+            </div>
+          </div>
+
+          <div class="info-field">
+            <div class="info-label">Forest Range</div>
+            <div class="info-value">
+              <span class="info-value-icon">🌲</span>{{ officer.forest_range|default:"—" }}
+            </div>
+          </div>
+
+          <div class="info-field">
+            <div class="info-label">Account Status</div>
+            <div class="status-badge {% if officer.status %}active{% else %}inactive{% endif %}">
+              <div class="status-badge-dot"></div>
+              {% if officer.status %}Active{% else %}Inactive{% endif %}
+            </div>
+          </div>
+
+          <div class="info-field full">
+            <div class="info-label">Office Location</div>
+            <div class="info-value">
+              <span class="info-value-icon">📍</span>{{ officer.location_address|default:"—" }}
+            </div>
+          </div>
+
+          <div class="info-field full">
+            <div class="info-label">Registered Since</div>
+            <div class="info-value">
+              <span class="info-value-icon">🗓️</span>{{ officer.created_at|date:"d F Y, H:i" }}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div style="display:flex;flex-direction:column;gap:1.4rem;">
+
+      <!-- Designation banner -->
+      <div class="rank-banner">
+        <div class="rank-icon">🏅</div>
+        <div class="rank-info">
+          <div class="rank-title">{{ officer.designation|default:"Forest Officer" }}</div>
+          <div class="rank-sub">{{ officer.forest_range|default:"Forest Range" }}</div>
+        </div>
+      </div>
+
+      <!-- Quick tiles -->
+      <div class="panel" style="animation-delay:0.15s;">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="live-dot {% if not officer.status %}red{% endif %}"></span>
+            Account Overview
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="overview-tiles">
+            <div class="overview-tile">
+              <div class="tile-icon blue">🔑</div>
+              <div class="tile-info">
+                <div class="tile-label">Officer ID</div>
+                <div class="tile-value">{{ officer.officer_id|default:"—" }}</div>
+              </div>
+            </div>
+            <div class="overview-tile">
+              <div class="tile-icon kiwi">🌲</div>
+              <div class="tile-info">
+                <div class="tile-label">Forest Range</div>
+                <div class="tile-value">{{ officer.forest_range|default:"—" }}</div>
+              </div>
+            </div>
+            <div class="overview-tile">
+              <div class="tile-icon amber">📍</div>
+              <div class="tile-info">
+                <div class="tile-label">Office Location</div>
+                <div class="tile-value">{{ officer.location_address|default:"—" }}</div>
+              </div>
+            </div>
+            <div class="overview-tile">
+              <div class="tile-icon {% if officer.status %}kiwi{% else %}red{% endif %}">
+                {% if officer.status %}✅{% else %}⛔{% endif %}
+              </div>
+              <div class="tile-info">
+                <div class="tile-label">Status</div>
+                <div class="tile-value" style="color:{% if officer.status %}var(--kiwi){% else %}var(--red){% endif %}">
+                  {% if officer.status %}Active & On Duty{% else %}Currently Inactive{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Registered stamp -->
+      <div class="panel" style="animation-delay:0.2s;">
+        <div class="panel-body" style="padding:1rem 1.2rem;">
+          <div class="created-stamp">
+            <div class="created-dot"></div>
+            Registered: {{ officer.created_at|date:"d M Y" }}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</main>
+
+<script>
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebarOverlay');
+  const hamburger = document.getElementById('hamburger');
+  hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+  overlay.addEventListener('click',   () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { sidebar.classList.remove('open'); overlay.classList.remove('open'); } });
+
+  function updateClock() {
+    const n = new Date();
+    document.getElementById('liveClock').textContent =
+      String(n.getHours()).padStart(2,'0') + ':' +
+      String(n.getMinutes()).padStart(2,'0') + ':' +
+      String(n.getSeconds()).padStart(2,'0');
+  }
+  updateClock(); setInterval(updateClock, 1000);
+</script>
+</body>
+</html>

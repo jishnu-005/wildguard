@@ -1,0 +1,867 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – SOS Emergency Report</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg:        #0d1a07;
+      --bg2:       #111f09;
+      --bg3:       #16260c;
+      --surface:   #192d0c;
+      --surface2:  #1f3710;
+      --border:    rgba(110,200,40,0.13);
+      --border2:   rgba(110,200,40,0.22);
+      --kiwi:      #7dc832;
+      --kiwi-dim:  #4f8a18;
+      --kiwi-glow: rgba(125,200,50,0.18);
+      --kiwi-text: #a8e060;
+      --white:     #e8f5d8;
+      --white2:    #c4dfa8;
+      --muted:     #6a8a55;
+      --red:       #f05555;
+      --red-dim:   rgba(240,85,85,0.12);
+      --red-glow:  rgba(240,85,85,0.25);
+      --amber:     #f0a020;
+      --amber-dim: rgba(240,160,32,0.12);
+      --blue:      #4488ff;
+      --blue-dim:  rgba(68,136,255,0.12);
+      --sidebar-w: 260px;
+      --topbar-h:  68px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(240,85,85,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(125,200,50,0.04) 0%, transparent 55%);
+    }
+    .noise {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    @keyframes fadeUp   { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+    @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes sosPulse { 0%,100%{box-shadow:0 0 0 0 rgba(240,85,85,0.5)} 50%{box-shadow:0 0 0 14px rgba(240,85,85,0)} }
+    @keyframes scanLine { 0%{left:-100%} 100%{left:100%} }
+    @keyframes spin     { to{transform:rotate(360deg)} }
+    @keyframes locating {
+      0%   { transform: scale(1);   opacity: 1; }
+      50%  { transform: scale(1.3); opacity: 0.6; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+    @keyframes slideIn  { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+
+    /* ═══════ LAYOUT SHELL ═══════ */
+    .shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+    /* ═══════ SIDEBAR ═══════ */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1.4rem 1.4rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .sidebar-logo-mark {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--kiwi), var(--kiwi-dim));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+      box-shadow: 0 0 20px var(--kiwi-glow);
+    }
+    .sidebar-logo-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem; letter-spacing: 0.08em;
+      color: var(--white); line-height: 1;
+    }
+    .sidebar-logo-text span { color: var(--kiwi); }
+    .sidebar-logo-tagline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.5rem; letter-spacing: 0.15em; color: var(--muted);
+      text-transform: uppercase; margin-top: 2px;
+    }
+    .sidebar-section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.5rem; letter-spacing: 0.2em; color: var(--muted);
+      text-transform: uppercase; padding: 1.2rem 1.4rem 0.5rem; opacity: 0.6;
+    }
+    .nav-links { display: flex; flex-direction: column; gap: 2px; padding: 0 0.8rem; }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.85rem; border-radius: 10px;
+      text-decoration: none; color: var(--muted);
+      font-size: 0.88rem; font-weight: 500;
+      transition: background 0.15s, color 0.15s; position: relative;
+    }
+    .nav-link:hover { background: var(--surface); color: var(--white2); }
+    .nav-link.active { background: rgba(240,85,85,0.1); color: var(--red); }
+    .nav-link.active::before {
+      content: ''; position: absolute; left: 0; top: 20%; bottom: 20%;
+      width: 3px; border-radius: 0 3px 3px 0; background: var(--red);
+    }
+    .nav-icon { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .sidebar-sos {
+      margin: 1rem 0.8rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.9rem 1rem; border-radius: 12px;
+      background: rgba(240,85,85,0.12); border: 1px solid rgba(240,85,85,0.35);
+      text-decoration: none; color: var(--red);
+      font-weight: 700; font-size: 0.88rem;
+    }
+    .sidebar-sos-icon {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: var(--red); display: flex; align-items: center; justify-content: center;
+      font-size: 0.95rem; animation: sosPulse 2.5s ease-in-out infinite;
+    }
+    .sidebar-sos-title { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.08em; }
+    .sidebar-sos-sub { font-size: 0.65rem; color: rgba(240,85,85,0.7); font-weight: 400; margin-top: 1px; }
+    .sidebar-user {
+      margin-top: auto; border-top: 1px solid var(--border);
+      padding: 1rem 1.2rem; display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 2px solid var(--border2); background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0; overflow: hidden; position: relative;
+    }
+    .sidebar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .sidebar-avatar-dot {
+      position: absolute; bottom: 0; right: 0;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #4ade80; border: 2px solid var(--bg2); animation: pulse 2s infinite;
+    }
+    .sidebar-user-name { font-weight: 700; font-size: 0.84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.1em; color: var(--kiwi); text-transform: uppercase;
+    }
+
+    /* ═══════ TOPBAR ═══════ */
+    .topbar {
+      position: fixed; top: 0;
+      left: var(--sidebar-w); right: 0; height: var(--topbar-h);
+      background: rgba(13,26,7,0.92); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; z-index: 90;
+      transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .topbar-left { display: flex; flex-direction: column; gap: 2px; }
+    .topbar-breadcrumb {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase;
+    }
+    .topbar-breadcrumb span { color: var(--red); }
+    .topbar-title { font-weight: 700; font-size: 1.05rem; color: var(--white); }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+      letter-spacing: 0.1em; color: var(--muted);
+      padding: 0.3rem 0.75rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .topbar-btn {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; cursor: pointer; text-decoration: none;
+      transition: background 0.2s; color: var(--white);
+    }
+    .topbar-btn:hover { background: var(--surface2); }
+    .topbar-status {
+      display: flex; align-items: center; gap: 0.45rem;
+      padding: 0.3rem 0.75rem; background: rgba(240,85,85,0.08);
+      border: 1px solid rgba(240,85,85,0.22); border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      color: var(--red); letter-spacing: 0.05em;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse 1.4s infinite; }
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px; cursor: pointer;
+      padding: 0.4rem; border: none; background: none;
+    }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--white2); border-radius: 2px; transition: all 0.3s; }
+
+    /* ═══════ MAIN WRAP ═══════ */
+    .main-wrap {
+      margin-left: var(--sidebar-w); padding-top: var(--topbar-h);
+      min-height: 100vh; transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .main { padding: 2rem; max-width: 860px; margin: 0 auto; }
+
+    /* ═══════ SOS HEADER BANNER ═══════ */
+    .sos-banner {
+      background: linear-gradient(135deg, rgba(240,85,85,0.18) 0%, rgba(200,40,40,0.12) 50%, rgba(13,26,7,0.9) 100%);
+      border: 1.5px solid rgba(240,85,85,0.3);
+      border-radius: 20px; padding: 2rem 2.2rem;
+      margin-bottom: 2rem; position: relative; overflow: hidden;
+      animation: fadeUp 0.4s ease forwards;
+    }
+    .sos-banner::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(240,85,85,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,85,85,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .sos-banner-scan {
+      position: absolute; top: 0; height: 100%; width: 60%; opacity: 0.4;
+      background: linear-gradient(90deg, transparent, rgba(240,85,85,0.06), transparent);
+      animation: scanLine 3.5s ease-in-out infinite;
+    }
+    .sos-banner-content { position: relative; z-index: 1; display: flex; align-items: center; gap: 1.5rem; }
+    .sos-ring {
+      width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(240,85,85,0.15); border: 2px solid rgba(240,85,85,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem;
+      animation: sosPulse 2s ease-in-out infinite;
+    }
+    .sos-banner-eyebrow {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.2em; text-transform: uppercase; color: rgba(240,85,85,0.7); margin-bottom: 0.3rem;
+    }
+    .sos-banner-title {
+      font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.8rem, 4vw, 2.6rem);
+      letter-spacing: 0.06em; color: var(--red); line-height: 1;
+    }
+    .sos-banner-sub { font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; line-height: 1.5; }
+
+    /* ═══════ ERROR MESSAGES ═══════ */
+    .error-box {
+      background: var(--red-dim); border: 1px solid rgba(240,85,85,0.3);
+      border-radius: 12px; padding: 1rem 1.2rem; margin-bottom: 1.5rem;
+      animation: slideIn 0.3s ease;
+    }
+    .error-box-title {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--red); margin-bottom: 0.5rem;
+    }
+    .error-box ul { list-style: none; }
+    .error-box ul li {
+      font-size: 0.82rem; color: rgba(240,85,85,0.9); padding: 2px 0;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .error-box ul li::before { content: '⚠'; font-size: 0.75rem; }
+
+    /* ═══════ FORM CARD ═══════ */
+    .form-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+      animation: fadeUp 0.5s ease 0.1s both;
+    }
+    .form-card-header {
+      padding: 1.2rem 1.6rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.65rem;
+      background: rgba(240,85,85,0.04);
+    }
+    .form-card-header-line { width: 4px; height: 18px; background: var(--red); border-radius: 4px; }
+    .form-card-header-title { font-weight: 700; font-size: 0.95rem; }
+    .form-card-header-meta {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-left: auto;
+    }
+    .form-body { padding: 1.6rem; display: flex; flex-direction: column; gap: 1.3rem; }
+
+    /* ═══════ FORM ELEMENTS ═══════ */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.45rem; }
+    .form-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .form-label .req { color: var(--red); font-size: 0.7rem; }
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+      border-radius: 10px; padding: 0.7rem 0.95rem;
+      transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+      outline: none; appearance: none;
+    }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--muted); }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      border-color: rgba(240,85,85,0.5);
+      box-shadow: 0 0 0 3px rgba(240,85,85,0.1);
+      background: var(--surface2);
+    }
+    .form-input.readonly {
+      background: rgba(255,255,255,0.03); color: var(--muted);
+      border-color: rgba(110,200,40,0.08); cursor: default;
+    }
+    .form-textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+    .form-select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236a8a55' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.9rem center;
+      padding-right: 2.5rem; cursor: pointer;
+    }
+    .form-select option { background: var(--bg2); color: var(--white); }
+    .form-hint {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.53rem;
+      letter-spacing: 0.06em; color: var(--muted); margin-top: 0.2rem;
+    }
+
+    /* ═══════ LOCATION WIDGET ═══════ */
+    .location-widget {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.1rem 1.2rem;
+      display: flex; flex-direction: column; gap: 0.85rem;
+    }
+    .location-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .location-label-row { display: flex; align-items: center; gap: 0.5rem; }
+    .location-lbl {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+    }
+    .location-status {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.08em; padding: 3px 10px; border-radius: 20px;
+      transition: all 0.3s;
+    }
+    .location-status.idle   { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+    .location-status.detecting { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,160,32,0.3); }
+    .location-status.found  { background: rgba(125,200,50,0.1); color: var(--kiwi); border: 1px solid rgba(125,200,50,0.3); }
+    .location-status.error  { background: var(--red-dim); color: var(--red); border: 1px solid rgba(240,85,85,0.3); }
+    .detect-btn {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.55rem 1.1rem; border-radius: 8px;
+      background: rgba(68,136,255,0.1); border: 1px solid rgba(68,136,255,0.25);
+      color: var(--blue); font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    }
+    .detect-btn:hover { background: rgba(68,136,255,0.18); transform: translateY(-1px); }
+    .detect-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .detect-btn .spin { animation: spin 1s linear infinite; display: inline-block; }
+    .location-coords {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;
+    }
+    .location-address-row { display: flex; flex-direction: column; gap: 0.45rem; }
+    .loc-lbl-mini {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+    }
+
+    /* ═══════ SEVERITY PICKER ═══════ */
+    .severity-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.65rem; }
+    .severity-opt { position: relative; }
+    .severity-opt input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+    .severity-lbl {
+      display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+      padding: 0.75rem 0.5rem; border-radius: 10px; cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: var(--surface); transition: all 0.2s;
+    }
+    .severity-lbl:hover { border-color: var(--border2); background: var(--surface2); }
+    .severity-opt input:checked + .severity-lbl { border-color: transparent; }
+    .severity-opt[data-level="critical"] input:checked + .severity-lbl { background: rgba(240,85,85,0.15); border-color: rgba(240,85,85,0.4); }
+    .severity-opt[data-level="high"]     input:checked + .severity-lbl { background: rgba(240,120,50,0.12); border-color: rgba(240,120,50,0.4); }
+    .severity-opt[data-level="medium"]   input:checked + .severity-lbl { background: var(--amber-dim); border-color: rgba(240,160,32,0.4); }
+    .severity-opt[data-level="low"]      input:checked + .severity-lbl { background: rgba(125,200,50,0.1); border-color: rgba(125,200,50,0.4); }
+    .severity-emoji { font-size: 1.4rem; }
+    .severity-text {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.1em; text-transform: uppercase; text-align: center;
+    }
+    .severity-opt[data-level="critical"] .severity-text { color: var(--red); }
+    .severity-opt[data-level="high"]     .severity-text { color: #f07832; }
+    .severity-opt[data-level="medium"]   .severity-text { color: var(--amber); }
+    .severity-opt[data-level="low"]      .severity-text { color: var(--kiwi); }
+
+    /* ═══════ REPORTER SECTION ═══════ */
+    .section-divider {
+      display: flex; align-items: center; gap: 0.75rem; margin: 0.3rem 0;
+    }
+    .section-divider-line { flex: 1; height: 1px; background: var(--border); }
+    .section-divider-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+      letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* ═══════ SUBMIT BUTTON ═══════ */
+    .form-footer { padding: 0 1.6rem 1.6rem; display: flex; flex-direction: column; gap: 0.85rem; }
+    .submit-btn {
+      width: 100%; padding: 1rem 1.5rem;
+      background: var(--red); color: #fff;
+      border: none; border-radius: 12px;
+      font-family: 'DM Sans', sans-serif; font-size: 1rem; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.65rem;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      animation: sosPulse 3s ease-in-out infinite;
+      letter-spacing: 0.02em;
+    }
+    .submit-btn:hover {
+      background: #d44040;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(240,85,85,0.35);
+      animation: none;
+    }
+    .submit-btn:active { transform: scale(0.98); }
+    .submit-disclaimer {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.06em; color: var(--muted); text-align: center; line-height: 1.6;
+    }
+    .cancel-link {
+      display: block; text-align: center; font-size: 0.82rem;
+      color: var(--muted); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .cancel-link:hover { color: var(--white2); }
+
+    /* ═══════ SIDEBAR OVERLAY ═══════ */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; z-index: 99;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+    }
+
+    /* ═══════ RESPONSIVE ═══════ */
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { transform: translateX(-260px); width: 260px; }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+      .sidebar-overlay.show { opacity: 1; pointer-events: auto; }
+      .topbar { left: 0; }
+      .main-wrap { margin-left: 0; }
+      .hamburger { display: flex; }
+    }
+    @media (max-width: 640px) {
+      .main { padding: 1.2rem; }
+      .form-row { grid-template-columns: 1fr; }
+      .severity-grid { grid-template-columns: repeat(2,1fr); }
+      .location-coords { grid-template-columns: 1fr; }
+      .sos-banner-content { flex-direction: column; align-items: flex-start; gap: 1rem; }
+      .topbar { padding: 0 1.1rem; }
+      .topbar-time { display: none; }
+    }
+    @media (max-width: 420px) {
+      .severity-grid { grid-template-columns: repeat(2,1fr); }
+      .location-top { flex-wrap: wrap; gap: 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="shell">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="sidebar" id="sidebar">
+    <a href="{% url 'user_home' %}" class="sidebar-logo">
+      <div class="sidebar-logo-mark">🐾</div>
+      <div>
+        <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+        <div class="sidebar-logo-tagline">// Wildlife Protection Network</div>
+      </div>
+    </a>
+
+    <div class="sidebar-section-label">// Navigation</div>
+    <nav class="nav-links">
+      <a href="{% url 'user_home' %}" class="nav-link">
+        <span class="nav-icon">🏠</span> Dashboard
+      </a>
+      <a href="{% url 'user_alerts_list' %}" class="nav-link">
+        <span class="nav-icon">🔔</span> Wildlife Alerts
+      </a>
+      <a href="{% url 'user_danger_zone' %}" class="nav-link">
+        <span class="nav-icon">🗺️</span> Danger Zone Map
+      </a>
+      <a href="{% url 'user_report' %}" class="nav-link">
+        <span class="nav-icon">📋</span> My Reports
+      </a>
+    </nav>
+
+    <div class="sidebar-section-label" style="margin-top:0.5rem;">// Account</div>
+    <nav class="nav-links">
+      <a href="/user_profile/" class="nav-link">
+        <span class="nav-icon">👤</span> My Profile
+      </a>
+    </nav>
+
+    <a href="{% url 'sos_report' %}" class="sidebar-sos active">
+      <div class="sidebar-sos-icon">🚨</div>
+      <div>
+        <div class="sidebar-sos-title">SOS Emergency</div>
+        <div class="sidebar-sos-sub">Currently active</div>
+      </div>
+    </a>
+
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">
+        {% if user.name %}
+          {{ user.name|slice:":1"|upper }}
+        {% else %}
+          🌿
+        {% endif %}
+        <div class="sidebar-avatar-dot"></div>
+      </div>
+      <div>
+        <div class="sidebar-user-name">{{ user.name|default:"Wildlife Watcher" }}</div>
+        <div class="sidebar-user-role">WG Citizen</div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ══════════ TOPBAR ══════════ -->
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <button class="hamburger" id="hamburgerBtn" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-left">
+        <div class="topbar-breadcrumb">WildGuard / <a href="{% url 'user_home' %}" style="color:var(--muted);text-decoration:none;">Dashboard</a> / <span>SOS Report</span></div>
+        <div class="topbar-title">🚨 Emergency Report</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-status">
+        <span class="status-dot"></span>
+        Emergency Mode
+      </div>
+      <div class="topbar-time" id="liveClock">00:00:00</div>
+      <a href="/logout/" class="topbar-btn">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <div class="main-wrap">
+  <div class="main">
+
+    <!-- BANNER -->
+    <div class="sos-banner">
+      <div class="sos-banner-scan"></div>
+      <div class="sos-banner-content">
+        <div class="sos-ring">🚨</div>
+        <div>
+          <div class="sos-banner-eyebrow">// Emergency Report System · WildGuard</div>
+          <div class="sos-banner-title">SOS Emergency Report</div>
+          <div class="sos-banner-sub">Fill in the details below. Your location will be detected automatically. Forest authorities will be notified immediately upon submission.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ERROR BOX -->
+    {% if errors %}
+    <div class="error-box">
+      <div class="error-box-title">// Please fix the following errors</div>
+      <ul>
+        {% for error in errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- FORM -->
+    <form method="POST" action="" id="sosForm">
+      {% csrf_token %}
+
+      <!-- Hidden location fields populated by JS -->
+      <input type="hidden" name="latitude"          id="hidLat">
+      <input type="hidden" name="longitude"         id="hidLng">
+      <input type="hidden" name="location_address"  id="hidAddr">
+      <input type="hidden" name="location_accuracy" id="hidAcc">
+
+      <!-- ── INCIDENT DETAILS ── -->
+      <div class="form-card">
+        <div class="form-card-header">
+          <div class="form-card-header-line"></div>
+          <div class="form-card-header-title">🐾 Incident Details</div>
+          <div class="form-card-header-meta">// required</div>
+        </div>
+        <div class="form-body">
+
+          <!-- Animal name -->
+          <div class="form-group">
+            <label class="form-label" for="animal_name">Animal Name <span class="req">*</span></label>
+            <input
+              class="form-input" type="text" id="animal_name" name="animal_name"
+              placeholder="e.g. Elephant, Tiger, Leopard, Wild Boar…"
+              value="{{ form_data.animal_name|default:'' }}"
+              autocomplete="off" required>
+            <span class="form-hint">// Enter the common name of the animal you encountered</span>
+          </div>
+
+          <!-- Severity picker -->
+          <div class="form-group">
+            <label class="form-label">Severity Level <span class="req">*</span></label>
+            <div class="severity-grid">
+              <div class="severity-opt" data-level="critical">
+                <input type="radio" name="severity" id="sev_critical" value="critical"
+                  {% if form_data.severity == 'critical' or not form_data %}checked{% endif %}>
+                <label class="severity-lbl" for="sev_critical">
+                  <span class="severity-emoji">🔴</span>
+                  <span class="severity-text">Critical</span>
+                </label>
+              </div>
+              <div class="severity-opt" data-level="high">
+                <input type="radio" name="severity" id="sev_high" value="high"
+                  {% if form_data.severity == 'high' %}checked{% endif %}>
+                <label class="severity-lbl" for="sev_high">
+                  <span class="severity-emoji">🟠</span>
+                  <span class="severity-text">High</span>
+                </label>
+              </div>
+              <div class="severity-opt" data-level="medium">
+                <input type="radio" name="severity" id="sev_medium" value="medium"
+                  {% if form_data.severity == 'medium' %}checked{% endif %}>
+                <label class="severity-lbl" for="sev_medium">
+                  <span class="severity-emoji">🟡</span>
+                  <span class="severity-text">Medium</span>
+                </label>
+              </div>
+              <div class="severity-opt" data-level="low">
+                <input type="radio" name="severity" id="sev_low" value="low"
+                  {% if form_data.severity == 'low' %}checked{% endif %}>
+                <label class="severity-lbl" for="sev_low">
+                  <span class="severity-emoji">🟢</span>
+                  <span class="severity-text">Low</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label class="form-label" for="description">Description <span class="req">*</span></label>
+            <textarea
+              class="form-textarea" id="description" name="description"
+              placeholder="Describe the situation clearly — behaviour of the animal, number of people at risk, damage caused, immediate danger level…"
+              required>{{ form_data.description|default:'' }}</textarea>
+            <span class="form-hint">// Be as specific as possible — this helps authorities respond correctly</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── LOCATION SECTION ── -->
+      <div class="form-card" style="margin-top:1.3rem;">
+        <div class="form-card-header">
+          <div class="form-card-header-line" style="background:var(--blue);"></div>
+          <div class="form-card-header-title">📍 Location Details</div>
+          <div class="form-card-header-meta">// auto-detected</div>
+        </div>
+        <div class="form-body">
+
+          <div class="location-widget">
+            <div class="location-top">
+              <div class="location-label-row">
+                <span class="location-lbl">GPS Location</span>
+                <span class="location-status idle" id="locStatus">Waiting…</span>
+              </div>
+              <button type="button" class="detect-btn" id="detectBtn" onclick="detectLocation()">
+                <i class="fa-solid fa-location-crosshairs"></i>
+                <span id="detectBtnTxt">Detect My Location</span>
+              </button>
+            </div>
+            <div class="location-coords">
+              <div class="form-group">
+                <label class="loc-lbl-mini">Latitude</label>
+                <input class="form-input readonly" type="text" id="dispLat" placeholder="—" readonly>
+              </div>
+              <div class="form-group">
+                <label class="loc-lbl-mini">Longitude</label>
+                <input class="form-input readonly" type="text" id="dispLng" placeholder="—" readonly>
+              </div>
+            </div>
+            <div class="location-address-row">
+              <label class="loc-lbl-mini">Detected Address</label>
+              <input class="form-input readonly" type="text" id="dispAddr" placeholder="Address will appear after detection…" readonly>
+            </div>
+          </div>
+
+          <div class="form-hint" style="margin-top:-0.5rem;">
+            // Location is auto-detected via your device GPS. Click "Detect My Location" to update. Your browser may ask for permission.
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── REPORTER DETAILS ── -->
+      <div class="form-card" style="margin-top:1.3rem;">
+        <div class="form-card-header">
+          <div class="form-card-header-line" style="background:var(--kiwi);"></div>
+          <div class="form-card-header-title">👤 Reporter Details</div>
+          <div class="form-card-header-meta">// pre-filled from session</div>
+        </div>
+        <div class="form-body">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="reporter_name">Your Name</label>
+              <input
+                class="form-input" type="text" id="reporter_name" name="reporter_name"
+                placeholder="Full name"
+                value="{{ form_data.reporter_name|default:user.name }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="reporter_phone">Phone Number</label>
+              <input
+                class="form-input" type="tel" id="reporter_phone" name="reporter_phone"
+                placeholder="+91 XXXXX XXXXX"
+                value="{{ form_data.reporter_phone|default:user.phone }}">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reporter_email">Email Address</label>
+            <input
+              class="form-input" type="email" id="reporter_email" name="reporter_email"
+              placeholder="your@email.com"
+              value="{{ form_data.reporter_email|default:user.email }}">
+          </div>
+
+        </div>
+      </div>
+
+      <!-- SUBMIT -->
+      <div class="form-footer" style="margin-top:1.3rem; padding: 0;">
+        <button type="submit" class="submit-btn" id="submitBtn">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          Submit SOS Emergency Report
+        </button>
+        <p class="submit-disclaimer">
+          // By submitting this report you confirm the incident is real.<br>
+          False reports may result in account suspension. Authorities will be contacted.
+        </p>
+        <a href="{% url 'user_home' %}" class="cancel-link">← Cancel and return to Dashboard</a>
+      </div>
+
+    </form>
+
+    <div style="height:2.5rem;"></div>
+
+  </div><!-- /main -->
+  </div><!-- /main-wrap -->
+
+</div><!-- /shell -->
+
+<script>
+  /* ── Live clock ── */
+  function tick() {
+    const n = new Date();
+    document.getElementById('liveClock').textContent =
+      String(n.getHours()).padStart(2,'0') + ':' +
+      String(n.getMinutes()).padStart(2,'0') + ':' +
+      String(n.getSeconds()).padStart(2,'0');
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* ── Sidebar toggle ── */
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebarOverlay');
+  const hamburger = document.getElementById('hamburgerBtn');
+  const openSidebar  = () => { sidebar.classList.add('open');    overlay.classList.add('show');    document.body.style.overflow = 'hidden'; };
+  const closeSidebar = () => { sidebar.classList.remove('open'); overlay.classList.remove('show'); document.body.style.overflow = ''; };
+  hamburger.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+  overlay.addEventListener('click', closeSidebar);
+
+  /* ── Location Detection ── */
+  function setLocStatus(state, text) {
+    const el = document.getElementById('locStatus');
+    el.className = 'location-status ' + state;
+    el.textContent = text;
+  }
+
+  function detectLocation() {
+    if (!navigator.geolocation) {
+      setLocStatus('error', 'Not supported');
+      return;
+    }
+    const btn = document.getElementById('detectBtn');
+    const btnTxt = document.getElementById('detectBtnTxt');
+    btn.disabled = true;
+    btnTxt.innerHTML = '<span class="spin">⟳</span> Detecting…';
+    setLocStatus('detecting', '⟳ Locating…');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude.toFixed(7);
+        const lng = pos.coords.longitude.toFixed(7);
+        const acc = pos.coords.accuracy;
+
+        // Populate hidden fields
+        document.getElementById('hidLat').value = lat;
+        document.getElementById('hidLng').value = lng;
+        document.getElementById('hidAcc').value = acc;
+
+        // Show in visible fields
+        document.getElementById('dispLat').value = lat;
+        document.getElementById('dispLng').value = lng;
+
+        setLocStatus('found', '✓ Located');
+        btn.disabled = false;
+        btnTxt.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Update Location';
+
+        // Reverse geocode using OpenStreetMap Nominatim (free, no key)
+        try {
+          const resp = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          const data = await resp.json();
+          const addr = data.display_name || `${lat}, ${lng}`;
+          document.getElementById('dispAddr').value  = addr;
+          document.getElementById('hidAddr').value   = addr;
+        } catch {
+          document.getElementById('dispAddr').value = `${lat}, ${lng}`;
+          document.getElementById('hidAddr').value  = `${lat}, ${lng}`;
+        }
+      },
+      (err) => {
+        let msg = 'Detection failed';
+        if (err.code === 1) msg = 'Permission denied';
+        else if (err.code === 2) msg = 'Position unavailable';
+        else if (err.code === 3) msg = 'Request timed out';
+        setLocStatus('error', msg);
+        btn.disabled = false;
+        btnTxt.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Retry Detection';
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  }
+
+  // Auto-detect on page load
+  window.addEventListener('load', () => {
+    setTimeout(detectLocation, 800);
+  });
+
+  /* ── Prevent double-submit ── */
+  document.getElementById('sosForm').addEventListener('submit', function () {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin">⟳</span> Submitting…';
+  });
+</script>
+</body>
+</html>

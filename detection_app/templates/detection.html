@@ -1,0 +1,561 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wildlife Detection System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg:      #080b0f;
+            --panel:   #0d1117;
+            --border:  #1c2535;
+            --accent:  #00e5ff;
+            --danger:  #ff3d3d;
+            --safe:    #00ff99;
+            --warn:    #ffb700;
+            --text:    #c8d6e5;
+            --dim:     #3d4f63;
+            --r:       10px;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: clamp(10px, 2.5vw, 24px) clamp(10px, 2.5vw, 20px);
+            background-image:
+                radial-gradient(ellipse at 10% 0%,   rgba(0,229,255,0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 100%, rgba(255,61,61,0.05) 0%, transparent 50%);
+        }
+
+        /* ══ HEADER ═══════════════════════════════════════ */
+        header {
+            width: 100%;
+            max-width: 980px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+            margin-bottom: clamp(12px, 2.5vw, 22px);
+        }
+
+        .h-left { display: flex; align-items: center; gap: 10px; }
+
+        .h-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, rgba(0,229,255,0.15), transparent);
+            border: 1px solid rgba(0,229,255,0.3);
+            border-radius: 8px;
+            display: grid; place-items: center;
+            font-size: 1.1rem; flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: clamp(0.9rem, 3.2vw, 1.35rem);
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #fff;
+        }
+        header h1 span { color: var(--accent); }
+
+        .h-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        /* Status dot */
+        #status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--dim); flex-shrink: 0;
+            transition: background .3s, box-shadow .3s;
+        }
+        #status-dot.online  { background: var(--safe);   box-shadow: 0 0 7px var(--safe); }
+        #status-dot.offline { background: var(--danger);  box-shadow: 0 0 7px var(--danger); }
+
+        #server-status {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.7rem; color: var(--dim);
+            display: flex; align-items: center; gap: 5px;
+        }
+
+        /* Location pill */
+        #loc-badge {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.63rem; color: var(--dim);
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 20px; padding: 3px 10px;
+            max-width: 190px; overflow: hidden;
+            white-space: nowrap; text-overflow: ellipsis;
+        }
+        #loc-badge.on { color: var(--accent); border-color: rgba(0,229,255,.25); }
+
+        /* ══ LAYOUT GRID ══════════════════════════════════ */
+        .wrap {
+            width: 100%; max-width: 980px;
+            display: grid;
+            grid-template-columns: 1fr 290px;
+            gap: clamp(10px, 2vw, 18px);
+            align-items: start;
+        }
+
+        @media (max-width: 740px) { .wrap { grid-template-columns: 1fr; } }
+
+        /* ══ VIDEO PANEL ══════════════════════════════════ */
+        .v-wrap {
+            position: relative;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            overflow: hidden;
+            aspect-ratio: 4 / 3;
+        }
+
+        #webcam {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; display: block;
+        }
+
+        /* hidden capture canvas */
+        #cap { display: none; }
+
+        /* corners */
+        .c {
+            position: absolute; width: 16px; height: 16px;
+            border-color: var(--accent); border-style: solid;
+            z-index: 3; pointer-events: none;
+        }
+        .c.tl { top:8px;    left:8px;    border-width: 2px 0 0 2px; }
+        .c.tr { top:8px;    right:8px;   border-width: 2px 2px 0 0; }
+        .c.bl { bottom:8px; left:8px;    border-width: 0 0 2px 2px; }
+        .c.br { bottom:8px; right:8px;   border-width: 0 2px 2px 0; }
+
+        /* scan line */
+        .scan {
+            position: absolute; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+            opacity: 0.35; top: 0; z-index: 2; pointer-events: none;
+            animation: scan 3s linear infinite;
+        }
+        @keyframes scan { to { top: 100%; } }
+
+        /* REC badge */
+        .rec {
+            position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+            font-family: 'Share Tech Mono', monospace; font-size: 0.6rem;
+            letter-spacing: .15em; color: var(--danger);
+            background: rgba(255,61,61,.1); border: 1px solid rgba(255,61,61,.3);
+            padding: 2px 10px; border-radius: 20px; z-index: 3;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .rec-dot { width:5px; height:5px; border-radius:50%; background:var(--danger); animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity:0; } }
+
+        /* alert overlay */
+        #alert-ov {
+            position: absolute; inset: 0; border-radius: var(--r);
+            pointer-events: none; opacity: 0; transition: opacity .2s;
+            border: 3px solid var(--danger);
+            box-shadow: inset 0 0 50px rgba(255,61,61,.2);
+            z-index: 4;
+        }
+        #alert-ov.on {
+            opacity: 1;
+            animation: pulse .7s infinite alternate;
+        }
+        @keyframes pulse {
+            from { box-shadow: inset 0 0 30px rgba(255,61,61,.15); border-color: var(--danger); }
+            to   { box-shadow: inset 0 0 70px rgba(255,61,61,.45); border-color: #ff8080; }
+        }
+
+        /* on-video label */
+        #v-label {
+            position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: clamp(.58rem, 1.8vw, .7rem);
+            white-space: nowrap; padding: 4px 14px; border-radius: 20px;
+            background: rgba(8,11,15,.75); border: 1px solid var(--border);
+            color: var(--dim); backdrop-filter: blur(6px); z-index: 3;
+            transition: color .3s, border-color .3s;
+        }
+        #v-label.animal { color: var(--danger); border-color: rgba(255,61,61,.4); }
+        #v-label.safe   { color: var(--safe);   border-color: rgba(0,255,153,.3); }
+
+        /* ══ SIDEBAR ══════════════════════════════════════ */
+        .sidebar { display: flex; flex-direction: column; gap: clamp(8px,1.8vw,14px); }
+
+        .card {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: var(--r); padding: clamp(10px, 2vw, 16px);
+        }
+
+        .card-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: .6rem; letter-spacing: .18em; text-transform: uppercase;
+            color: var(--dim); margin-bottom: 8px;
+        }
+
+        /* detection card */
+        #lbl-class {
+            font-size: clamp(1.4rem, 3.8vw, 2rem);
+            font-weight: 700; color: #fff; line-height: 1.1;
+            transition: color .3s;
+        }
+        #lbl-class.animal { color: var(--danger); }
+        #lbl-class.safe   { color: var(--safe); }
+
+        #lbl-conf {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: .78rem; color: var(--accent); margin-top: 3px;
+        }
+
+        #lbl-status {
+            display: inline-block; margin-top: 8px;
+            font-size: .72rem; font-weight: 600; letter-spacing: .05em;
+            padding: 4px 10px; border-radius: 4px;
+            background: rgba(61,79,99,.15); color: var(--dim);
+            border: 1px solid var(--border);
+        }
+        #lbl-status.animal { background:rgba(255,61,61,.1);  color:var(--danger); border-color:rgba(255,61,61,.25); }
+        #lbl-status.safe   { background:rgba(0,255,153,.07); color:var(--safe);   border-color:rgba(0,255,153,.2); }
+
+        /* meta rows */
+        .meta { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+        .mrow { display: flex; flex-direction: column; gap: 1px; }
+        .mk { font-family:'Share Tech Mono',monospace; font-size:.57rem; color:var(--dim); text-transform:uppercase; letter-spacing:.08em; }
+        .mv { font-size:.75rem; color:var(--text); word-break:break-word; }
+        .mv.ac { color: var(--accent); }
+
+        /* bars */
+        .bars { display: flex; flex-direction: column; gap: 8px; }
+        .bi { }
+        .bl { display:flex; justify-content:space-between; font-family:'Share Tech Mono',monospace; font-size:.68rem; margin-bottom:2px; }
+        .bl span:first-child { color:var(--text); }
+        .bl span:last-child  { color:var(--accent); }
+        .bt { height:4px; background:var(--border); border-radius:3px; overflow:hidden; }
+        .bf { height:100%; border-radius:3px; background:var(--accent); width:0%; transition:width .25s ease; }
+        .bf.danger { background:var(--danger); }
+        .bf.safe   { background:var(--safe); }
+
+        /* log */
+        #log {
+            font-family:'Share Tech Mono',monospace; font-size:.63rem; color:var(--dim);
+            max-height: 110px; overflow-y:auto; line-height:1.9;
+            scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+        }
+        #log::-webkit-scrollbar { width:3px; }
+        #log::-webkit-scrollbar-thumb { background:var(--border); }
+        .le { padding:1px 0; border-bottom:1px solid rgba(255,255,255,.025); }
+        .le.animal .ts { color:var(--danger); }
+        .le.safe   .ts { color:var(--safe); }
+        .le.sys    .ts { color:var(--warn); }
+
+        /* ══ MOBILE adjustments ══════════════════════════ */
+        @media (max-width: 740px) {
+            .sidebar {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            /* detection card full width */
+            .sidebar .card:first-child { grid-column: 1 / -1; }
+            /* log full width */
+            .sidebar .card:last-child  { grid-column: 1 / -1; }
+        }
+        @media (max-width: 420px) {
+            .sidebar { grid-template-columns: 1fr; }
+            .sidebar .card:first-child,
+            .sidebar .card:last-child { grid-column: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────── -->
+<header>
+    <div class="h-left">
+        <div class="h-icon">🌿</div>
+        <h1>Wildlife <span>Detection</span></h1>
+    </div>
+    <div class="h-right">
+        <span id="loc-badge">📍 Locating…</span>
+        <div id="server-status">
+            <span id="status-dot"></span>
+            <span id="status-text">Connecting…</span>
+        </div>
+    </div>
+</header>
+
+<!-- ── MAIN ───────────────────────────────────────────── -->
+<div class="wrap">
+
+    <!-- VIDEO -->
+    <div class="v-wrap">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="cap"></canvas>
+        <div class="c tl"></div><div class="c tr"></div>
+        <div class="c bl"></div><div class="c br"></div>
+        <div class="scan"></div>
+        <div class="rec"><span class="rec-dot"></span> REC</div>
+        <div id="alert-ov"></div>
+        <div id="v-label">Initialising…</div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+
+        <!-- Detection -->
+        <div class="card">
+            <div class="card-title">Current Detection</div>
+            <div id="lbl-class">—</div>
+            <div id="lbl-conf">—</div>
+            <div id="lbl-status">Initialising model…</div>
+            <div class="meta">
+                <div class="mrow">
+                    <span class="mk">Coordinates</span>
+                    <span class="mv ac" id="m-coords">—</span>
+                </div>
+                <div class="mrow">
+                    <span class="mk">Address</span>
+                    <span class="mv" id="m-addr">—</span>
+                </div>
+                <div class="mrow">
+                    <span class="mk">Last Alert</span>
+                    <span class="mv" id="m-time">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bars -->
+        <div class="card">
+            <div class="card-title">Class Probabilities</div>
+            <div class="bars" id="bars"></div>
+        </div>
+
+        <!-- Log -->
+        <div class="card">
+            <div class="card-title">Event Log</div>
+            <div id="log"></div>
+        </div>
+
+    </div>
+</div>
+
+<audio id="beep" src="{% static 'sounds/beep.mp3' %}" preload="auto"></audio>
+
+<script>
+const MODEL_URL  = "{% static 'tm_model/' %}";
+const THRESHOLD  = 0.85;
+const NO_ALERT   = ["Human"];
+
+let model, running = true;
+let gLat = null, gLon = null, gAddr = "", gAcc = null;
+
+/* ── Geolocation ─────────────────────────────── */
+function initGeo() {
+    if (!navigator.geolocation) {
+        setLocBadge('GPS unavailable', false); return;
+    }
+    navigator.geolocation.watchPosition(
+        pos => {
+            gLat = pos.coords.latitude.toFixed(7);
+            gLon = pos.coords.longitude.toFixed(7);
+            gAcc = pos.coords.accuracy;
+            setLocBadge(`📍 ${gLat}, ${gLon}`, true);
+            el('m-coords').textContent = `${gLat}, ${gLon}`;
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${gLat}&lon=${gLon}&format=json`)
+                .then(r => r.json()).then(d => {
+                    gAddr = d.display_name || "";
+                    const short = gAddr.length > 55 ? gAddr.slice(0,55)+'…' : gAddr;
+                    el('m-addr').textContent = short || '—';
+                }).catch(() => {});
+        },
+        () => setLocBadge('📍 Denied', false),
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
+    );
+}
+
+function setLocBadge(txt, on) {
+    const b = el('loc-badge');
+    b.textContent = txt;
+    b.className   = on ? 'on' : '';
+}
+
+/* ── Snapshot ────────────────────────────────── */
+function snap() {
+    const v = el('webcam'), c = el('cap');
+    c.width  = v.videoWidth  || 640;
+    c.height = v.videoHeight || 480;
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.7);
+}
+
+/* ── Log ─────────────────────────────────────── */
+function log(msg, type='sys') {
+    const t = new Date().toLocaleTimeString();
+    const d = document.createElement('div');
+    d.className = `le ${type}`;
+    d.innerHTML = `<span class="ts">[${t}]</span> ${msg}`;
+    el('log').prepend(d);
+    while (el('log').children.length > 50) el('log').lastChild.remove();
+}
+
+/* ── Bars ────────────────────────────────────── */
+function buildBars(labels) {
+    el('bars').innerHTML = labels.map(l => `
+        <div class="bi">
+            <div class="bl"><span>${l}</span><span id="cp-${l}">0.00%</span></div>
+            <div class="bt"><div class="bf" id="bp-${l}"></div></div>
+        </div>`).join('');
+}
+
+function updateBars(preds, dom) {
+    preds.forEach(p => {
+        const pct  = (p.probability * 100).toFixed(2);
+        const fill = document.getElementById(`bp-${p.className}`);
+        const conf = document.getElementById(`cp-${p.className}`);
+        if (!fill || !conf) return;
+        fill.style.width = pct + '%';
+        conf.textContent = pct + '%';
+        fill.className   = 'bf';
+        if (p.className === dom.className)
+            fill.classList.add(NO_ALERT.includes(p.className) ? 'safe' : 'danger');
+        else if (NO_ALERT.includes(p.className))
+            fill.classList.add('safe');
+    });
+}
+
+/* ── Server status ───────────────────────────── */
+async function checkServer() {
+    try {
+        const r = await fetch("/ping-server/");
+        if (!r.ok) throw 0;
+        el('status-dot').className  = 'online';
+        el('status-text').textContent = 'Server online';
+        if (!running) { running = true; log('Server back online', 'sys'); predict(); }
+        setTimeout(checkServer, 5000);
+    } catch {
+        el('status-dot').className  = 'offline';
+        el('status-text').textContent = 'Server offline';
+        if (running) stopAll();
+        setTimeout(checkServer, 10000);
+    }
+}
+
+/* ── Init ────────────────────────────────────── */
+async function init() {
+    initGeo();
+    try {
+        log('Loading model…');
+        model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+        const labels = model.getClassLabels
+            ? model.getClassLabels()
+            : Array.from({length: model.getTotalClasses()}, (_,i) => `Class ${i}`);
+        buildBars(labels);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        el('webcam').srcObject = stream;
+        setStatus('Detecting…', '');
+        log('Model loaded — detection active');
+        predict();
+    } catch(e) {
+        setStatus('Error', ''); log('Init error: ' + e.message);
+    }
+}
+
+/* ── Status helpers ──────────────────────────── */
+function setStatus(txt, cls) {
+    el('lbl-status').textContent = txt;
+    el('lbl-status').className   = cls;
+}
+
+/* ── Predict loop ────────────────────────────── */
+async function predict() {
+    if (!running) return;
+    try {
+        const preds = await model.predict(el('webcam'));
+        const dom   = preds.reduce((a,b) => b.probability > a.probability ? b : a);
+
+        const isAnimal = !NO_ALERT.includes(dom.className);
+        const conf     = (dom.probability * 100).toFixed(2);
+
+        el('lbl-class').textContent = dom.className;
+        el('lbl-class').className   = isAnimal ? 'animal' : 'safe';
+        el('lbl-conf').textContent  = `${conf}% confidence`;
+        setStatus(isAnimal ? '⚠ ANIMAL DETECTED' : '✓ Human — Safe', isAnimal ? 'animal' : 'safe');
+
+        el('v-label').textContent = `${dom.className} ${conf}%`;
+        el('v-label').className   = isAnimal ? 'animal' : 'safe';
+        el('alert-ov').className  = (isAnimal && dom.probability >= THRESHOLD) ? 'on' : '';
+
+        updateBars(preds, dom);
+
+        if (isAnimal && dom.probability >= THRESHOLD) {
+            el('m-time').textContent = new Date().toLocaleString();
+            log(`HIGH CONF: ${dom.className} @ ${conf}%`, 'animal');
+            el('beep').currentTime = 0;
+            el('beep').play().catch(() => {});
+            await sendAlert(dom.className, dom.probability, snap());
+        }
+    } catch(e) { console.error(e); }
+    requestAnimationFrame(predict);
+}
+
+/* ── Send alert ──────────────────────────────── */
+async function sendAlert(cls, prob, img) {
+    try {
+        const r = await fetch("/send-alert-email/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({
+                detectedClass:   cls,
+                confidence:      (prob * 100).toFixed(2),
+                latitude:        gLat,
+                longitude:       gLon,
+                locationAddress: gAddr,
+                locationAccuracy: gAcc,
+                imageDataUrl:    img
+            })
+        });
+        const j = await r.json();
+        log(`Alert sent — ${cls} | ${j.emailsSent} email(s)`, 'sys');
+    } catch(e) {
+        log('Alert failed: ' + e.message, 'sys');
+    }
+}
+
+/* ── Stop all ────────────────────────────────── */
+function stopAll() {
+    running = false;
+    el('webcam').srcObject?.getTracks().forEach(t => t.stop());
+    setStatus('Server offline', '');
+    el('lbl-class').textContent = '—';
+    el('alert-ov').className    = '';
+    el('v-label').textContent   = 'Offline';
+    el('v-label').className     = '';
+    log('Detection stopped', 'sys');
+}
+
+/* ── Util ────────────────────────────────────── */
+const el = id => document.getElementById(id);
+
+init();
+setTimeout(checkServer, 5000);
+</script>
+</body>
+</html>

@@ -1,0 +1,821 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Danger Zones</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root {
+      --black:            #ffffff;
+      --black-2:          #f3f8ee;
+      --black-3:          #e8f2df;
+      --black-4:          #ddecd0;
+      --kiwi:             #5a9e10;
+      --kiwi-bright:      #6dba18;
+      --kiwi-dim:         #3d7008;
+      --kiwi-glow:        rgba(90,158,16,0.15);
+      --kiwi-glow-strong: rgba(90,158,16,0.30);
+      --white:            #1a2e0e;
+      --grey:             #5a7a4a;
+      --red:              #e05555;
+      --amber:            #d97706;
+      --blue:             #2563eb;
+      --sidebar-w:        260px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    .page-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove { 0% { transform: translateY(0); } 100% { transform: translateY(48px); } }
+
+    /* ══ SIDEBAR ══ */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-w);
+      background: rgba(243,248,238,0.97);
+      border-right: 1px solid rgba(90,158,16,0.15);
+      display: flex; flex-direction: column;
+      z-index: 200; backdrop-filter: blur(12px);
+      transition: transform 0.3s ease;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 0.65rem;
+      padding: 1.4rem 1.4rem 1.2rem;
+      border-bottom: 1px solid rgba(90,158,16,0.12);
+      text-decoration: none; flex-shrink: 0;
+    }
+    .sidebar-logo-icon {
+      width: 36px; height: 36px; background: var(--kiwi); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.15rem;
+      box-shadow: 0 0 16px var(--kiwi-glow-strong); flex-shrink: 0;
+    }
+    .sidebar-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.35rem; letter-spacing: 0.12em; color: var(--white); line-height: 1; }
+    .sidebar-logo-text span { color: var(--kiwi); }
+    .sidebar-logo-sub { font-family: 'Space Mono', monospace; font-size: 0.48rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--grey); margin-top: 1px; }
+
+    .admin-badge {
+      margin: 1rem 1.2rem 0.8rem;
+      background: rgba(90,158,16,0.07); border: 1px solid rgba(90,158,16,0.18);
+      border-radius: 10px; padding: 0.8rem 1rem;
+      display: flex; align-items: center; gap: 0.7rem; flex-shrink: 0;
+    }
+    .admin-avatar {
+      width: 38px; height: 38px; border-radius: 50%; background: var(--black-3);
+      border: 2px solid rgba(90,158,16,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0; overflow: hidden;
+    }
+    .admin-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .admin-info { min-width: 0; }
+    .admin-name { font-weight: 700; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .admin-role { font-family: 'Space Mono', monospace; font-size: 0.56rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--kiwi); }
+    .admin-status { width: 8px; height: 8px; border-radius: 50%; background: var(--kiwi); margin-left: auto; flex-shrink: 0; animation: pulse 2s infinite; box-shadow: 0 0 6px var(--kiwi); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 0.6rem 0.8rem; scrollbar-width: thin; scrollbar-color: rgba(90,158,16,0.2) transparent; }
+    .nav-section-label { font-family: 'Space Mono', monospace; font-size: 0.52rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--grey); padding: 0.8rem 0.6rem 0.4rem; opacity: 0.7; }
+    .nav-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.62rem 0.9rem; border-radius: 8px; text-decoration: none; color: var(--grey); font-size: 0.84rem; font-weight: 600; transition: background 0.2s, color 0.2s; cursor: pointer; margin-bottom: 2px; }
+    .nav-item:hover { background: rgba(90,158,16,0.08); color: var(--white); }
+    .nav-item.active { background: rgba(90,158,16,0.12); color: var(--kiwi); border-left: 3px solid var(--kiwi); }
+    .nav-icon { font-size: 1rem; flex-shrink: 0; width: 20px; text-align: center; }
+    .nav-badge { margin-left: auto; background: var(--kiwi); color: #fff; font-family: 'Space Mono', monospace; font-size: 0.52rem; font-weight: 700; padding: 1px 6px; border-radius: 20px; }
+    .nav-badge.red   { background: var(--red); }
+    .nav-badge.amber { background: var(--amber); }
+    .nav-badge.blue  { background: var(--blue); }
+
+    .sidebar-footer { padding: 0.8rem; border-top: 1px solid rgba(90,158,16,0.12); flex-shrink: 0; }
+    .btn-logout { width: 100%; display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 0.9rem; background: rgba(224,85,85,0.06); border: 1px solid rgba(224,85,85,0.2); border-radius: 8px; color: var(--red); font-family: 'Space Mono', monospace; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; text-decoration: none; transition: background 0.2s, border-color 0.2s; }
+    .btn-logout:hover { background: rgba(224,85,85,0.12); border-color: rgba(224,85,85,0.4); }
+
+    /* ══ TOPBAR ══ */
+    .topbar { position: fixed; top: 0; left: var(--sidebar-w); right: 0; height: 62px; background: rgba(255,255,255,0.95); border-bottom: 1px solid rgba(90,158,16,0.12); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; z-index: 150; transition: left 0.3s; }
+    .topbar-left { display: flex; align-items: center; gap: 0.8rem; }
+    .topbar-page-label { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--grey); }
+    .topbar-page-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.35rem; letter-spacing: 0.06em; color: var(--white); }
+    .topbar-sep { width: 1px; height: 24px; background: rgba(90,158,16,0.2); }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-time { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; color: var(--grey); }
+    .topbar-alert-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--kiwi); animation: pulse 1.5s infinite; box-shadow: 0 0 8px var(--kiwi); }
+    .topbar-alert-dot.red { background: var(--red); box-shadow: 0 0 8px rgba(224,85,85,0.5); }
+
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--kiwi); border-radius: 2px; transition: all 0.3s; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.6); backdrop-filter: blur(2px); z-index: 190; }
+    .sidebar-overlay.open { display: block; }
+
+    .scanline-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--kiwi), transparent); opacity: 0; animation: scanBar 8s ease-in-out infinite; }
+    @keyframes scanBar { 0% { left: -100%; opacity: 0; } 10% { opacity: 0.4; } 90% { opacity: 0.2; } 100% { left: 100%; opacity: 0; } }
+
+    /* ══ MAIN ══ */
+    .main { margin-left: var(--sidebar-w); padding-top: 62px; min-height: 100vh; position: relative; z-index: 1; transition: margin-left 0.3s; }
+    .content { padding: 2rem 2rem 3rem; max-width: 1400px; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── SECTION HEADER ── */
+    .section-header { margin-bottom: 1.8rem; }
+    .section-eyebrow { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--kiwi); margin-bottom: 0.3rem; }
+    .section-heading { font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.8rem, 3vw, 2.4rem); letter-spacing: 0.04em; line-height: 1; }
+    .section-sub { font-size: 0.82rem; color: var(--grey); margin-top: 0.4rem; line-height: 1.6; }
+
+    /* ── STATS ROW ── */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.8rem; }
+    .stat-card { background: var(--black-2); border: 1px solid rgba(90,158,16,0.15); border-radius: 12px; padding: 1.1rem 1.4rem; position: relative; overflow: hidden; transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s; animation: fadeUp 0.6s ease forwards; opacity: 0; }
+    .stat-card:nth-child(1){animation-delay:0.05s} .stat-card:nth-child(2){animation-delay:0.10s} .stat-card:nth-child(3){animation-delay:0.15s} .stat-card:nth-child(4){animation-delay:0.20s}
+    .stat-card:hover { border-color: rgba(90,158,16,0.35); transform: translateY(-3px); box-shadow: 0 10px 30px rgba(90,158,16,0.1); }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--kiwi), var(--kiwi-bright)); opacity: 0; transition: opacity 0.25s; }
+    .stat-card:hover::before, .stat-card.always-top::before { opacity: 1; }
+    .stat-card.red-accent::before   { background: linear-gradient(90deg, var(--red), #f87171); }
+    .stat-card.amber-accent::before { background: linear-gradient(90deg, var(--amber), #fcd34d); }
+    .stat-card.blue-accent::before  { background: linear-gradient(90deg, var(--blue), #60a5fa); }
+    .stat-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 0.6rem; }
+    .stat-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; background: rgba(90,158,16,0.1); border: 1px solid rgba(90,158,16,0.2); }
+    .stat-icon.red   { background: rgba(224,85,85,0.08);  border-color: rgba(224,85,85,0.2); }
+    .stat-icon.amber { background: rgba(217,119,6,0.08);  border-color: rgba(217,119,6,0.2); }
+    .stat-icon.blue  { background: rgba(37,99,235,0.08);  border-color: rgba(37,99,235,0.2); }
+    .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; line-height: 1; }
+    .stat-label { font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grey); margin-top: 0.2rem; }
+
+    /* ── SEARCH BAR ── */
+    .search-wrap { animation: fadeUp 0.6s 0.25s ease forwards; opacity: 0; margin-bottom: 1.4rem; }
+    .search-bar { display: flex; align-items: center; gap: 0.8rem; background: var(--black-2); border: 1px solid rgba(90,158,16,0.18); border-radius: 12px; padding: 0.7rem 1.1rem; transition: border-color 0.2s, box-shadow 0.2s; }
+    .search-bar:focus-within { border-color: rgba(90,158,16,0.45); box-shadow: 0 0 0 3px rgba(90,158,16,0.08); }
+    .search-icon { font-size: 1rem; opacity: 0.55; flex-shrink: 0; }
+    .search-input { flex: 1; background: none; border: none; outline: none; font-family: 'Syne', sans-serif; font-size: 0.9rem; color: var(--white); }
+    .search-input::placeholder { color: var(--grey); opacity: 0.6; }
+    .search-clear { background: none; border: none; cursor: pointer; font-size: 0.85rem; color: var(--grey); padding: 2px 4px; border-radius: 4px; transition: color 0.2s, background 0.2s; display: none; }
+    .search-clear:hover { color: var(--red); background: rgba(224,85,85,0.08); }
+    .search-clear.visible { display: block; }
+    .search-count { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; color: var(--grey); white-space: nowrap; flex-shrink: 0; }
+
+    /* filter pills */
+    .filter-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+    .filter-pill { font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(90,158,16,0.2); background: var(--black-3); color: var(--grey); cursor: pointer; transition: all 0.2s; }
+    .filter-pill:hover, .filter-pill.active { background: rgba(90,158,16,0.12); border-color: var(--kiwi); color: var(--kiwi); }
+    .filter-pill.red { border-color: rgba(224,85,85,0.25); }
+    .filter-pill.red:hover, .filter-pill.red.active { background: rgba(224,85,85,0.1); border-color: var(--red); color: var(--red); }
+    .filter-pill.amber { border-color: rgba(217,119,6,0.25); }
+    .filter-pill.amber:hover, .filter-pill.amber.active { background: rgba(217,119,6,0.1); border-color: var(--amber); color: var(--amber); }
+
+    /* ── LAYOUT: MAP + LIST ── */
+    .dz-layout { display: grid; grid-template-columns: 1fr 400px; gap: 1.4rem; align-items: start; animation: fadeUp 0.6s 0.35s ease forwards; opacity: 0; }
+
+    /* ── MAP ── */
+    .map-panel { background: var(--black-2); border: 1px solid rgba(90,158,16,0.15); border-radius: 14px; overflow: hidden; }
+    .map-panel-header { padding: 1rem 1.3rem; border-bottom: 1px solid rgba(90,158,16,0.1); display: flex; align-items: center; justify-content: space-between; }
+    .map-panel-title { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--kiwi); display: flex; align-items: center; gap: 0.5rem; }
+    .map-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: pulse 1.5s infinite; box-shadow: 0 0 5px rgba(224,85,85,0.6); }
+    .map-controls { display: flex; gap: 0.5rem; }
+    .map-btn { font-family: 'Space Mono', monospace; font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(90,158,16,0.2); background: var(--black-3); color: var(--grey); cursor: pointer; transition: all 0.2s; }
+    .map-btn:hover, .map-btn.active { background: rgba(90,158,16,0.12); border-color: var(--kiwi); color: var(--kiwi); }
+    #danger-map { height: 440px; width: 100%; }
+
+    /* ── DETECTION LIST ── */
+    .list-panel { background: var(--black-2); border: 1px solid rgba(90,158,16,0.15); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; max-height: 540px; }
+    .list-panel-header { padding: 1rem 1.3rem; border-bottom: 1px solid rgba(90,158,16,0.1); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .list-panel-title { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--kiwi); }
+    .list-panel-count { font-family: 'Space Mono', monospace; font-size: 0.58rem; padding: 2px 8px; border-radius: 20px; background: rgba(90,158,16,0.1); border: 1px solid rgba(90,158,16,0.2); color: var(--kiwi); }
+    .detection-list { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: rgba(90,158,16,0.2) transparent; }
+    .detection-item { display: flex; align-items: flex-start; gap: 0.85rem; padding: 0.9rem 1.2rem; border-bottom: 1px solid rgba(90,158,16,0.07); cursor: pointer; transition: background 0.18s; }
+    .detection-item:last-child { border-bottom: none; }
+    .detection-item:hover, .detection-item.highlighted { background: rgba(90,158,16,0.07); }
+    .detection-item.highlighted { border-left: 3px solid var(--kiwi); }
+    .det-thumb { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: var(--black-3); flex-shrink: 0; border: 1px solid rgba(90,158,16,0.15); }
+    .det-thumb-placeholder { width: 48px; height: 48px; border-radius: 8px; background: var(--black-3); border: 1px solid rgba(90,158,16,0.15); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+    .det-info { flex: 1; min-width: 0; }
+    .det-name { font-weight: 700; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .det-meta { font-family: 'Space Mono', monospace; font-size: 0.56rem; letter-spacing: 0.06em; color: var(--grey); margin-top: 0.2rem; }
+    .det-addr { font-size: 0.72rem; color: var(--grey); margin-top: 0.2rem; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .det-conf { font-family: 'Space Mono', monospace; font-size: 0.6rem; padding: 2px 7px; border-radius: 4px; flex-shrink: 0; }
+    .conf-high   { background: rgba(224,85,85,0.1);  color: var(--red);   border: 1px solid rgba(224,85,85,0.25); }
+    .conf-medium { background: rgba(217,119,6,0.1);  color: var(--amber); border: 1px solid rgba(217,119,6,0.25); }
+    .conf-low    { background: rgba(90,158,16,0.1);  color: var(--kiwi);  border: 1px solid rgba(90,158,16,0.2); }
+
+    /* no-results */
+    .no-results { padding: 2.5rem 1.5rem; text-align: center; color: var(--grey); }
+    .no-results-icon { font-size: 2.5rem; margin-bottom: 0.7rem; opacity: 0.5; }
+    .no-results-text { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; }
+
+    /* ── DETAIL MODAL ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,46,14,0.55); backdrop-filter: blur(4px); z-index: 300; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--black-2); border: 1px solid rgba(90,158,16,0.25); border-radius: 16px; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; animation: fadeUp 0.25s ease; }
+    .modal-header { padding: 1.3rem 1.5rem; border-bottom: 1px solid rgba(90,158,16,0.12); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.06em; }
+    .modal-close { background: none; border: 1px solid rgba(90,158,16,0.2); border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--grey); font-size: 1rem; transition: border-color 0.2s, color 0.2s, background 0.2s; }
+    .modal-close:hover { border-color: var(--red); color: var(--red); background: rgba(224,85,85,0.06); }
+    .modal-body { padding: 1.5rem; }
+    .modal-img { width: 100%; height: 200px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(90,158,16,0.15); margin-bottom: 1.2rem; }
+    .modal-img-placeholder { width: 100%; height: 160px; border-radius: 10px; border: 1px solid rgba(90,158,16,0.15); background: var(--black-3); display: flex; align-items: center; justify-content: center; font-size: 3rem; margin-bottom: 1.2rem; }
+    .modal-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+    .modal-field { background: var(--black-3); border: 1px solid rgba(90,158,16,0.1); border-radius: 8px; padding: 0.8rem 1rem; }
+    .modal-field-label { font-family: 'Space Mono', monospace; font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grey); margin-bottom: 0.25rem; }
+    .modal-field-value { font-weight: 700; font-size: 0.9rem; }
+    .modal-field.full { grid-column: 1 / -1; }
+    .modal-map { height: 180px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(90,158,16,0.15); margin-top: 1rem; }
+
+    /* ── LEAFLET CUSTOM MARKERS ── */
+    .custom-marker { width: 32px; height: 32px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 3px solid #fff; box-shadow: 0 2px 12px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; }
+    .custom-marker .inner { transform: rotate(45deg); font-size: 0.85rem; }
+    .marker-high   { background: var(--red); }
+    .marker-medium { background: var(--amber); }
+    .marker-low    { background: var(--kiwi); }
+    .leaflet-popup-content-wrapper { border-radius: 10px !important; border: 1px solid rgba(90,158,16,0.25) !important; background: #f3f8ee !important; box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important; font-family: 'Syne', sans-serif !important; }
+    .leaflet-popup-tip { background: #f3f8ee !important; }
+    .popup-animal { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; color: #1a2e0e; }
+    .popup-conf { font-family: 'Space Mono', monospace; font-size: 0.58rem; color: #5a7a4a; }
+    .popup-addr { font-size: 0.75rem; color: #5a7a4a; margin-top: 0.2rem; max-width: 180px; }
+    .popup-time { font-family: 'Space Mono', monospace; font-size: 0.55rem; color: #5a9e10; margin-top: 0.3rem; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 1024px) { :root { --sidebar-w: 220px; } .content { padding: 1.5rem 1.5rem 3rem; } .dz-layout { grid-template-columns: 1fr; } .list-panel { max-height: 400px; } }
+    @media (max-width: 768px) {
+      :root { --sidebar-w: 260px; }
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); box-shadow: 4px 0 30px rgba(90,158,16,0.15); }
+      .topbar { left: 0; }
+      .hamburger { display: flex; }
+      .main { margin-left: 0; }
+      .content { padding: 1.2rem 1rem 3rem; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      #danger-map { height: 300px; }
+      .modal-fields { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); gap: 0.7rem; }
+      .stat-card { padding: 0.9rem 1rem; }
+      .stat-num { font-size: 1.7rem; }
+      .topbar-time { display: none; }
+    }
+    @media (max-width: 380px) {
+      .stats-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <a href="/admin_home/" class="sidebar-logo">
+    <div class="sidebar-logo-icon">🐾</div>
+    <div>
+      <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+      <div class="sidebar-logo-sub">Admin Portal</div>
+    </div>
+  </a>
+
+  <div class="admin-badge">
+    <div class="admin-avatar">
+      {% if admin.profile_image %}<img src="{{ admin.profile_image.url }}" alt="{{ admin.name }}"/>{% else %}🛡️{% endif %}
+    </div>
+    <div class="admin-info">
+      <div class="admin-name">{{ request.session.admin_name|default:"Administrator" }}</div>
+      <div class="admin-role">System Admin</div>
+    </div>
+    <div class="admin-status"></div>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-item" href="/admin_home/">
+      <span class="nav-icon">📊</span>Overview
+    </a>
+
+    <div class="nav-section-label">User Management</div>
+    <a class="nav-item" href="/user_list/">
+      <span class="nav-icon">👥</span>Manage Users
+    </a>
+
+    <div class="nav-section-label">Officer Management</div>
+    <a class="nav-item" href="/officer_list/">
+      <span class="nav-icon">🪖</span>Manage Officers
+    </a>
+
+    <div class="nav-section-label">Wildlife Team Management</div>
+    <a class="nav-item" href="/wildlife_list/">
+      <span class="nav-icon">🐘</span>Manage Wildlife Team
+    </a>
+    <a class="nav-item active" href="/admin_danger_zones/">
+      <span class="nav-icon">⚠️</span>Danger Zones
+    </a>
+
+    <div class="nav-section-label">Alerts & Reports</div>
+    <a class="nav-item" href="/admin_all_alerts/">
+      <span class="nav-icon">🔔</span>All Alerts
+    </a>
+    <a class="nav-item" href="/admin_sos_report_list/">
+      <span class="nav-icon">🚨</span>Emergency Reports
+    </a>
+
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="{% url 'logout' %}" class="btn-logout"><span>⏏</span> Log Out</a>
+  </div>
+</aside>
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-sep"></div>
+    <div>
+      <div class="topbar-page-label">// Wildlife Detection</div>
+      <div class="topbar-page-title">DANGER ZONES</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-time" id="liveClock"></div>
+    <div class="topbar-alert-dot"></div>
+    <div class="topbar-alert-dot red"></div>
+  </div>
+  <div class="scanline-bar"></div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+<div class="content">
+
+  <!-- Section header -->
+  <div class="section-header">
+    <div class="section-eyebrow">// Wildlife Detection Records</div>
+    <h1 class="section-heading">DANGER ZONES</h1>
+    <p class="section-sub">Real-time map of wildlife detections across all monitored forest areas. Click any entry to view details.</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card red-accent always-top">
+      <div class="stat-top"><div class="stat-icon red">🚨</div></div>
+      <div class="stat-num" id="stat-high">0</div>
+      <div class="stat-label">High Confidence</div>
+    </div>
+    <div class="stat-card amber-accent always-top">
+      <div class="stat-top"><div class="stat-icon amber">⚠️</div></div>
+      <div class="stat-num" id="stat-medium">0</div>
+      <div class="stat-label">Medium Conf.</div>
+    </div>
+    <div class="stat-card always-top">
+      <div class="stat-top"><div class="stat-icon">✅</div></div>
+      <div class="stat-num" id="stat-low">0</div>
+      <div class="stat-label">Low Confidence</div>
+    </div>
+    <div class="stat-card blue-accent always-top">
+      <div class="stat-top"><div class="stat-icon blue">📍</div></div>
+      <div class="stat-num" id="stat-mapped">0</div>
+      <div class="stat-label">Mapped Detections</div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by animal name, location, address…" autocomplete="off"/>
+      <button class="search-clear" id="searchClear" title="Clear search">✕</button>
+      <span class="search-count" id="searchCount"></span>
+    </div>
+    <div class="filter-row">
+      <button class="filter-pill active" data-filter="all">All</button>
+      <button class="filter-pill red" data-filter="high">🚨 High Risk (≥80%)</button>
+      <button class="filter-pill amber" data-filter="medium">⚠️ Medium (50–79%)</button>
+      <button class="filter-pill" data-filter="low">✅ Low (&lt;50%)</button>
+      <button class="filter-pill" data-filter="mapped">📍 Mapped Only</button>
+    </div>
+  </div>
+
+  <!-- Map + List -->
+  <div class="dz-layout">
+
+    <!-- MAP -->
+    <div class="map-panel">
+      <div class="map-panel-header">
+        <div class="map-panel-title">
+          <span class="map-live-dot"></span> Live Detection Map
+        </div>
+        <div class="map-controls">
+          <button class="map-btn active" id="btnFitAll">Fit All</button>
+          <button class="map-btn" id="btnHeatToggle">Heatmap</button>
+        </div>
+      </div>
+      <div id="danger-map"></div>
+    </div>
+
+    <!-- LIST -->
+    <div class="list-panel">
+      <div class="list-panel-header">
+        <span class="list-panel-title">// Detection Log</span>
+        <span class="list-panel-count" id="listCount">0 records</span>
+      </div>
+      <div class="detection-list" id="detectionList">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</main>
+
+<!-- ══ DETAIL MODAL ══ -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Detection Detail</div>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalImageWrap"></div>
+      <div class="modal-fields" id="modalFields"></div>
+      <div id="modalMapWrap"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ────────────────────────────────────────────
+   Inject Django context as JSON
+   ──────────────────────────────────────────── */
+const ZONES_RAW = [
+  {% for z in zones %}
+  {
+    id:        {{ z.id }},
+    animal:    "{{ z.animal_name|escapejs }}",
+    image:     "{% if z.animal_image %}{{ z.animal_image.url }}{% endif %}",
+    conf:      {{ z.confidence }},
+    lat:       {% if z.latitude %}{{ z.latitude }}{% else %}null{% endif %},
+    lng:       {% if z.longitude %}{{ z.longitude }}{% else %}null{% endif %},
+    address:   "{{ z.location_address|escapejs }}",
+    detected:  "{{ z.detected_at|date:'Y-m-d H:i:s' }}"
+  }{% if not forloop.last %},{% endif %}
+  {% endfor %}
+];
+
+/* ────────────────────────────────────────────
+   Helpers
+   ──────────────────────────────────────────── */
+function confLevel(c) {
+  if (c >= 0.80) return 'high';
+  if (c >= 0.50) return 'medium';
+  return 'low';
+}
+function confLabel(c) { return (c * 100).toFixed(1) + '%'; }
+function confClass(c) {
+  const l = confLevel(c);
+  return l === 'high' ? 'conf-high' : l === 'medium' ? 'conf-medium' : 'conf-low';
+}
+function animalEmoji(name) {
+  const n = name.toLowerCase();
+  if (n.includes('elephant')) return '🐘';
+  if (n.includes('tiger'))    return '🐯';
+  if (n.includes('leopard'))  return '🐆';
+  if (n.includes('bear'))     return '🐻';
+  if (n.includes('boar') || n.includes('pig')) return '🐗';
+  if (n.includes('deer'))     return '🦌';
+  if (n.includes('snake'))    return '🐍';
+  if (n.includes('crocodile') || n.includes('croc')) return '🐊';
+  if (n.includes('wolf'))     return '🐺';
+  if (n.includes('lion'))     return '🦁';
+  if (n.includes('monkey') || n.includes('ape') || n.includes('baboon')) return '🐒';
+  return '🐾';
+}
+
+/* ────────────────────────────────────────────
+   Stats
+   ──────────────────────────────────────────── */
+let highC = 0, medC = 0, lowC = 0, mapC = 0;
+ZONES_RAW.forEach(z => {
+  const l = confLevel(z.conf);
+  if (l === 'high') highC++;
+  else if (l === 'medium') medC++;
+  else lowC++;
+  if (z.lat !== null && z.lng !== null) mapC++;
+});
+document.getElementById('stat-high').textContent   = highC;
+document.getElementById('stat-medium').textContent = medC;
+document.getElementById('stat-low').textContent    = lowC;
+document.getElementById('stat-mapped').textContent = mapC;
+
+/* ────────────────────────────────────────────
+   Map init
+   ──────────────────────────────────────────── */
+const map = L.map('danger-map', { zoomControl: true, scrollWheelZoom: true });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 18
+}).addTo(map);
+map.setView([20.5, 78.9], 5); // India default
+
+function makeIcon(level) {
+  const color = level === 'high' ? '#e05555' : level === 'medium' ? '#d97706' : '#5a9e10';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 42" width="32" height="42">
+    <path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 26 16 26S32 28 32 16C32 7.163 24.837 0 16 0z" fill="${color}" stroke="#fff" stroke-width="2"/>
+    <circle cx="16" cy="16" r="7" fill="rgba(255,255,255,0.3)"/>
+  </svg>`;
+  return L.divIcon({
+    html: `<div style="position:relative;width:32px;height:42px">${svg}</div>`,
+    iconSize: [32, 42], iconAnchor: [16, 42], popupAnchor: [0, -44],
+    className: ''
+  });
+}
+
+const markers = [];
+const markerMap = {};
+
+ZONES_RAW.forEach(z => {
+  if (z.lat === null || z.lng === null) return;
+  const level = confLevel(z.conf);
+  const icon  = makeIcon(level);
+  const m = L.marker([parseFloat(z.lat), parseFloat(z.lng)], { icon })
+    .addTo(map)
+    .bindPopup(`
+      <div class="popup-animal">${animalEmoji(z.animal)} ${z.animal}</div>
+      <div class="popup-conf">Confidence: <strong>${confLabel(z.conf)}</strong> · ${level.toUpperCase()}</div>
+      ${z.address ? `<div class="popup-addr">📍 ${z.address}</div>` : ''}
+      <div class="popup-time">🕐 ${z.detected}</div>
+    `, { maxWidth: 240 });
+  m.on('click', () => highlightItem(z.id));
+  markers.push({ id: z.id, marker: m, level });
+  markerMap[z.id] = m;
+});
+
+function fitAll() {
+  const pts = markers.map(m => m.marker.getLatLng());
+  if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.15));
+}
+if (markers.length) fitAll();
+
+document.getElementById('btnFitAll').addEventListener('click', fitAll);
+
+/* heatmap toggle (simple circle overlay) */
+let heatLayerGroup = null;
+let heatActive = false;
+document.getElementById('btnHeatToggle').addEventListener('click', function() {
+  heatActive = !heatActive;
+  this.classList.toggle('active', heatActive);
+  if (heatActive) {
+    heatLayerGroup = L.layerGroup();
+    ZONES_RAW.forEach(z => {
+      if (z.lat === null || z.lng === null) return;
+      const level = confLevel(z.conf);
+      const color = level === 'high' ? '#e05555' : level === 'medium' ? '#d97706' : '#5a9e10';
+      const radius = level === 'high' ? 18000 : level === 'medium' ? 12000 : 8000;
+      L.circle([parseFloat(z.lat), parseFloat(z.lng)], {
+        color, fillColor: color, fillOpacity: 0.12, weight: 1, opacity: 0.4, radius
+      }).addTo(heatLayerGroup);
+    });
+    heatLayerGroup.addTo(map);
+  } else {
+    if (heatLayerGroup) { heatLayerGroup.remove(); heatLayerGroup = null; }
+  }
+});
+
+/* ────────────────────────────────────────────
+   Detection List render
+   ──────────────────────────────────────────── */
+let currentFilter = 'all';
+let currentSearch = '';
+let visibleData = [...ZONES_RAW];
+
+function getFiltered() {
+  return ZONES_RAW.filter(z => {
+    const s = currentSearch.toLowerCase();
+    const matchSearch = !s ||
+      z.animal.toLowerCase().includes(s) ||
+      z.address.toLowerCase().includes(s);
+    const level = confLevel(z.conf);
+    const matchFilter =
+      currentFilter === 'all'    ? true :
+      currentFilter === 'high'   ? level === 'high' :
+      currentFilter === 'medium' ? level === 'medium' :
+      currentFilter === 'low'    ? level === 'low' :
+      currentFilter === 'mapped' ? (z.lat !== null && z.lng !== null) : true;
+    return matchSearch && matchFilter;
+  });
+}
+
+function renderList(data) {
+  const list = document.getElementById('detectionList');
+  document.getElementById('listCount').textContent = data.length + ' record' + (data.length !== 1 ? 's' : '');
+  if (!data.length) {
+    list.innerHTML = `<div class="no-results"><div class="no-results-icon">🔍</div><div class="no-results-text">No detections found</div></div>`;
+    return;
+  }
+  list.innerHTML = data.map(z => `
+    <div class="detection-item" data-id="${z.id}" onclick="openDetail(${z.id})">
+      ${z.image
+        ? `<img class="det-thumb" src="${z.image}" alt="${z.animal}" onerror="this.outerHTML='<div class=\\'det-thumb-placeholder\\'>${animalEmoji(z.animal)}</div>'">`
+        : `<div class="det-thumb-placeholder">${animalEmoji(z.animal)}</div>`}
+      <div class="det-info">
+        <div class="det-name">${animalEmoji(z.animal)} ${z.animal}</div>
+        <div class="det-meta">🕐 ${z.detected}</div>
+        ${z.address ? `<div class="det-addr">📍 ${z.address}</div>` : ''}
+      </div>
+      <span class="det-conf ${confClass(z.conf)}">${confLabel(z.conf)}</span>
+    </div>
+  `).join('');
+
+  // show/hide markers based on filtered IDs
+  const ids = new Set(data.map(z => z.id));
+  markers.forEach(({ id, marker }) => {
+    if (ids.has(id)) {
+      if (!map.hasLayer(marker)) marker.addTo(map);
+    } else {
+      if (map.hasLayer(marker)) marker.remove();
+    }
+  });
+
+  const pts = data.filter(z => z.lat !== null && z.lng !== null)
+                   .map(z => [parseFloat(z.lat), parseFloat(z.lng)]);
+  if (pts.length) map.fitBounds(L.latLngBounds(pts).pad(0.15));
+  else if (markers.length) fitAll();
+}
+
+function highlightItem(id) {
+  document.querySelectorAll('.detection-item').forEach(el => el.classList.remove('highlighted'));
+  const el = document.querySelector(`.detection-item[data-id="${id}"]`);
+  if (el) { el.classList.add('highlighted'); el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  if (markerMap[id]) markerMap[id].openPopup();
+}
+
+/* ────────────────────────────────────────────
+   Search + Filter
+   ──────────────────────────────────────────── */
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+const searchCount = document.getElementById('searchCount');
+
+searchInput.addEventListener('input', () => {
+  currentSearch = searchInput.value.trim();
+  searchClear.classList.toggle('visible', !!currentSearch);
+  refresh();
+});
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  currentSearch = '';
+  searchClear.classList.remove('visible');
+  refresh();
+  searchInput.focus();
+});
+
+document.querySelectorAll('.filter-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    currentFilter = pill.dataset.filter;
+    refresh();
+  });
+});
+
+function refresh() {
+  const data = getFiltered();
+  searchCount.textContent = currentSearch ? data.length + ' result' + (data.length !== 1 ? 's' : '') : '';
+  renderList(data);
+}
+
+refresh(); // initial render
+
+/* ────────────────────────────────────────────
+   Detail Modal
+   ──────────────────────────────────────────── */
+function openDetail(id) {
+  const z = ZONES_RAW.find(x => x.id === id);
+  if (!z) return;
+  const level = confLevel(z.conf);
+  document.getElementById('modalTitle').textContent = animalEmoji(z.animal) + ' ' + z.animal;
+
+  // image
+  const imgWrap = document.getElementById('modalImageWrap');
+  if (z.image) {
+    imgWrap.innerHTML = `<img class="modal-img" src="${z.image}" alt="${z.animal}" onerror="this.outerHTML='<div class=\\'modal-img-placeholder\\'>${animalEmoji(z.animal)}</div>'">`;
+  } else {
+    imgWrap.innerHTML = `<div class="modal-img-placeholder">${animalEmoji(z.animal)}</div>`;
+  }
+
+  // fields
+  document.getElementById('modalFields').innerHTML = `
+    <div class="modal-field">
+      <div class="modal-field-label">Animal</div>
+      <div class="modal-field-value">${z.animal}</div>
+    </div>
+    <div class="modal-field">
+      <div class="modal-field-label">Confidence</div>
+      <div class="modal-field-value"><span class="det-conf ${confClass(z.conf)}">${confLabel(z.conf)}</span></div>
+    </div>
+    <div class="modal-field">
+      <div class="modal-field-label">Risk Level</div>
+      <div class="modal-field-value" style="text-transform:capitalize;color:${level==='high'?'var(--red)':level==='medium'?'var(--amber)':'var(--kiwi)'}">${level}</div>
+    </div>
+    <div class="modal-field">
+      <div class="modal-field-label">Detected At</div>
+      <div class="modal-field-value" style="font-size:0.8rem">${z.detected}</div>
+    </div>
+    ${z.lat !== null ? `
+    <div class="modal-field">
+      <div class="modal-field-label">Latitude</div>
+      <div class="modal-field-value">${parseFloat(z.lat).toFixed(5)}</div>
+    </div>
+    <div class="modal-field">
+      <div class="modal-field-label">Longitude</div>
+      <div class="modal-field-value">${parseFloat(z.lng).toFixed(5)}</div>
+    </div>
+    ` : ''}
+    ${z.address ? `
+    <div class="modal-field full">
+      <div class="modal-field-label">Location Address</div>
+      <div class="modal-field-value" style="font-weight:600;font-size:0.82rem">${z.address}</div>
+    </div>
+    ` : ''}
+  `;
+
+  // mini map in modal
+  const mapWrap = document.getElementById('modalMapWrap');
+  if (z.lat !== null && z.lng !== null) {
+    mapWrap.innerHTML = `<div class="modal-map" id="miniMap"></div>`;
+    setTimeout(() => {
+      const mini = L.map('miniMap', { zoomControl: false, attributionControl: false }).setView([parseFloat(z.lat), parseFloat(z.lng)], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(mini);
+      L.marker([parseFloat(z.lat), parseFloat(z.lng)], { icon: makeIcon(level) }).addTo(mini);
+    }, 80);
+  } else {
+    mapWrap.innerHTML = '';
+  }
+
+  document.getElementById('detailModal').classList.add('open');
+  highlightItem(id);
+}
+
+document.getElementById('modalClose').addEventListener('click', () => {
+  document.getElementById('detailModal').classList.remove('open');
+});
+document.getElementById('detailModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('detailModal')) {
+    document.getElementById('detailModal').classList.remove('open');
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('detailModal').classList.remove('open');
+    closeSidebar();
+  }
+});
+
+/* ────────────────────────────────────────────
+   Sidebar / hamburger
+   ──────────────────────────────────────────── */
+const sidebar   = document.getElementById('sidebar');
+const overlay   = document.getElementById('sidebarOverlay');
+const hamburger = document.getElementById('hamburger');
+hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+overlay.addEventListener('click', closeSidebar);
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+
+/* ────────────────────────────────────────────
+   Clock
+   ──────────────────────────────────────────── */
+function updateClock() {
+  const n = new Date();
+  document.getElementById('liveClock').textContent =
+    String(n.getHours()).padStart(2,'0') + ':' +
+    String(n.getMinutes()).padStart(2,'0') + ':' +
+    String(n.getSeconds()).padStart(2,'0');
+}
+updateClock();
+setInterval(updateClock, 1000);
+</script>
+</body>
+</html>

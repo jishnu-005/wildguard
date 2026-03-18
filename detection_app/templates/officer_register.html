@@ -1,0 +1,945 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Officer Registration</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --black:           #ffffff;
+      --black-2:         #f3f8ee;
+      --black-3:         #e8f2df;
+      --kiwi:            #5a9e10;
+      --kiwi-bright:     #6dba18;
+      --kiwi-dim:        #3d7008;
+      --kiwi-glow:       rgba(90,158,16,0.15);
+      --kiwi-glow-strong:rgba(90,158,16,0.30);
+      --white:           #1a2e0e;
+      --grey:            #5a7a4a;
+      --red:             #e05555;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    /* ── GRID BG ── */
+    .page-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.07) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove {
+      0%   { transform: translateY(0); }
+      100% { transform: translateY(48px); }
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 2.5rem;
+      z-index: 100;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.97) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(90,158,16,0.12);
+      backdrop-filter: blur(8px);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 0.6rem;
+      text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 34px; height: 34px;
+      background: var(--kiwi); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 0 16px var(--kiwi-glow-strong);
+    }
+    .nav-logo-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem; letter-spacing: 0.12em; color: var(--white);
+    }
+    .nav-logo-text span { color: var(--kiwi); }
+    .nav-back {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--grey); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--kiwi); }
+
+    /* ── PAGE WRAPPER ── */
+    .page {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 7rem 1.5rem 3rem;
+    }
+
+    /* ── CARD ── */
+    .card {
+      width: 100%; max-width: 780px;
+      background: var(--black-2);
+      border: 1px solid rgba(90,158,16,0.18);
+      border-radius: 16px;
+      padding: 2.8rem 2.8rem 2.4rem;
+      box-shadow: 0 0 80px rgba(90,158,16,0.08), 0 0 0 1px rgba(90,158,16,0.06);
+      animation: fadeUp 0.7s ease forwards;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── CARD HEADER ── */
+    .card-header { margin-bottom: 2rem; }
+    .card-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--kiwi); margin-bottom: 0.5rem;
+    }
+    .card-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      letter-spacing: 0.04em; line-height: 1;
+    }
+    .card-sub {
+      font-size: 0.85rem; color: var(--grey);
+      margin-top: 0.5rem; line-height: 1.6;
+    }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--kiwi);
+      grid-column: 1 / -1;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid rgba(90,158,16,0.15);
+      margin-bottom: 0.2rem;
+    }
+
+    /* ── DJANGO MESSAGES ── */
+    .messages { list-style: none; margin-bottom: 1.4rem; }
+    .messages li {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem; letter-spacing: 0.06em;
+      padding: 0.7rem 1rem; border-radius: 6px;
+      margin-bottom: 0.5rem;
+    }
+    .messages li.error   { background: rgba(224,85,85,0.08); border: 1px solid rgba(224,85,85,0.30); color: #c0392b; }
+    .messages li.success { background: rgba(90,158,16,0.08);  border: 1px solid rgba(90,158,16,0.30); color: var(--kiwi); }
+
+    /* ── FORM GRID ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem 1.4rem;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 0.45rem; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--grey);
+    }
+    label .req { color: var(--kiwi); margin-left: 2px; }
+
+    /* ── INPUTS ── */
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="password"],
+    select,
+    input[type="file"] {
+      width: 100%;
+      background: var(--black-3);
+      border: 1px solid rgba(90,158,16,0.18);
+      border-radius: 7px;
+      padding: 0.75rem 1rem;
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      appearance: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--kiwi);
+      box-shadow: 0 0 0 3px rgba(90,158,16,0.12);
+    }
+    input::placeholder { color: var(--grey); opacity: 0.7; }
+
+    /* ── VALIDATION STATES ── */
+    input.field-valid {
+      border-color: var(--kiwi) !important;
+      box-shadow: 0 0 0 2px rgba(90,158,16,0.10) !important;
+    }
+    input.field-invalid {
+      border-color: var(--red) !important;
+      box-shadow: 0 0 0 2px rgba(224,85,85,0.10) !important;
+    }
+
+    /* ── FIELD FEEDBACK ── */
+    .field-feedback {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem;
+      letter-spacing: 0.07em;
+      margin-top: 0.18rem;
+      min-height: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: color 0.2s;
+    }
+    .field-feedback.valid   { color: var(--kiwi); }
+    .field-feedback.invalid { color: var(--red); }
+
+    /* select arrow */
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute; right: 1rem; top: 50%;
+      transform: translateY(-50%);
+      color: var(--kiwi); pointer-events: none;
+      font-size: 0.75rem;
+    }
+    select { cursor: pointer; padding-right: 2.2rem; }
+    select option { background: var(--black-2); color: var(--white); }
+
+    /* file input */
+    .file-wrap {
+      position: relative;
+      background: var(--black-3);
+      border: 1px dashed rgba(90,158,16,0.28);
+      border-radius: 7px;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .file-wrap:hover { border-color: var(--kiwi); }
+    .file-wrap input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+      padding: 0; border: none; background: none;
+    }
+    .file-icon { font-size: 1.1rem; }
+    .file-label {
+      font-size: 0.82rem; color: var(--grey);
+    }
+    .file-label span { color: var(--kiwi); }
+    #file-name {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; color: var(--kiwi);
+      margin-top: 0.3rem; display: none;
+    }
+
+    /* ── PASSWORD STRENGTH ── */
+    .pw-wrap { position: relative; }
+    .pw-toggle {
+      position: absolute; right: 0.9rem; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      color: var(--grey); cursor: pointer; font-size: 1rem;
+      line-height: 1; padding: 0;
+      transition: color 0.2s;
+    }
+    .pw-toggle:hover { color: var(--kiwi); }
+    .pw-wrap input { padding-right: 2.8rem; }
+
+    .strength-bar {
+      height: 3px; border-radius: 2px;
+      background: rgba(0,0,0,0.08);
+      margin-top: 0.4rem; overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%; width: 0%;
+      border-radius: 2px;
+      transition: width 0.3s, background 0.3s;
+    }
+    .strength-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem; letter-spacing: 0.1em;
+      text-transform: uppercase; margin-top: 0.25rem;
+      color: var(--grey);
+    }
+
+    /* ── AVATAR PREVIEW ── */
+    .avatar-row {
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .avatar-preview {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--black-3);
+      border: 2px solid rgba(90,158,16,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; overflow: hidden; flex-shrink: 0;
+    }
+    .avatar-preview img {
+      width: 100%; height: 100%; object-fit: cover; display: none;
+    }
+    .avatar-info { flex: 1; min-width: 0; }
+
+    /* ── LOCATION ROW ── */
+    .location-row {
+      display: flex; gap: 0.6rem; align-items: stretch;
+    }
+    .location-row input { flex: 1; min-width: 0; }
+    .btn-detect {
+      flex-shrink: 0;
+      background: rgba(90,158,16,0.1);
+      border: 1px solid rgba(90,158,16,0.3);
+      border-radius: 7px;
+      padding: 0 1rem;
+      color: var(--kiwi);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex; align-items: center; gap: 0.4rem;
+      transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .btn-detect:hover {
+      background: rgba(90,158,16,0.18);
+      border-color: var(--kiwi);
+      box-shadow: 0 0 12px var(--kiwi-glow);
+    }
+    .btn-detect.loading { opacity: 0.6; pointer-events: none; }
+    .btn-detect .detect-icon { font-size: 0.95rem; }
+
+    /* location status */
+    #loc-status {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.08em;
+      margin-top: 0.3rem; min-height: 0.9rem;
+    }
+    #loc-status.ok  { color: var(--kiwi); }
+    #loc-status.err { color: var(--red); }
+    #loc-status.info{ color: var(--grey); }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(90,158,16,0.12);
+      margin: 1.6rem 0;
+    }
+
+    /* ── SUBMIT ── */
+    .btn-submit {
+      width: 100%;
+      background: var(--kiwi);
+      color: #ffffff;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 1rem;
+      border: none; border-radius: 7px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+      position: relative; overflow: hidden;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    }
+    .btn-submit::after {
+      content: ''; position: absolute; inset: 0;
+      background: white; opacity: 0; transition: opacity 0.2s;
+    }
+    .btn-submit:hover::after { opacity: 0.12; }
+    .btn-submit:hover {
+      box-shadow: 0 0 30px var(--kiwi-glow-strong);
+      transform: translateY(-2px);
+    }
+
+    /* ── FOOTER NOTE ── */
+    .form-footer {
+      text-align: center; margin-top: 1.2rem;
+      font-size: 0.82rem; color: var(--grey);
+    }
+    .form-footer a {
+      color: var(--kiwi); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .form-footer a:hover { color: var(--kiwi-bright); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 700px) {
+      nav { padding: 1rem 1.2rem; }
+      .card { padding: 2rem 1.3rem 1.8rem; border-radius: 12px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+      .section-label { grid-column: 1; }
+
+      /* location row stacks vertically on mobile */
+      .location-row { flex-direction: column; }
+      .btn-detect {
+        padding: 0.75rem 1rem;
+        justify-content: center;
+        width: 100%;
+      }
+
+      /* avatar row stacks vertically on mobile */
+      .avatar-row { flex-direction: column; align-items: flex-start; }
+      .avatar-info { width: 100%; }
+
+      /* nav logo text hidden on very small screens */
+      .nav-logo-text { font-size: 1.25rem; }
+    }
+
+    @media (max-width: 480px) {
+      .page { padding: 6rem 1rem 2.5rem; }
+      .card { padding: 1.8rem 1.1rem 1.6rem; border-radius: 10px; }
+      .card-title { font-size: 1.9rem; }
+      .btn-submit { font-size: 0.72rem; padding: 0.9rem; }
+      nav { padding: 0.85rem 1rem; }
+      .nav-logo-icon { width: 30px; height: 30px; font-size: 1rem; }
+    }
+
+    @media (max-width: 380px) {
+      .card { padding: 1.6rem 1rem 1.4rem; }
+      .form-grid { gap: 1rem; }
+      input[type="text"],
+      input[type="email"],
+      input[type="tel"],
+      input[type="password"],
+      select { font-size: 0.85rem; padding: 0.65rem 0.85rem; }
+    }
+
+    /* ── Touch target improvements ── */
+    @media (hover: none) and (pointer: coarse) {
+      input[type="text"],
+      input[type="email"],
+      input[type="tel"],
+      input[type="password"],
+      select {
+        font-size: 1rem;   /* prevents iOS zoom on focus */
+        padding: 0.85rem 1rem;
+      }
+      .btn-submit { padding: 1.1rem; font-size: 0.85rem; }
+      .btn-detect { padding: 0.85rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">🐾</div>
+    <div class="nav-logo-text">WILD<span>GUARD</span></div>
+  </a>
+  <a href="/" class="nav-back">← Back</a>
+</nav>
+
+<!-- PAGE -->
+<div class="page">
+  <div class="card">
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="card-label">// Officer Registration</div>
+      <h1 class="card-title">REGISTER AS OFFICER</h1>
+      <p class="card-sub">Create your Forest Officer account to manage wildlife alerts and field operations.</p>
+    </div>
+
+    <!-- Django Messages -->
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <!-- FORM -->
+    <form method="POST" action="{% url 'officer_register' %}" enctype="multipart/form-data" novalidate id="officerForm">
+      {% csrf_token %}
+
+      <!-- Hidden fields: populated by JS when location is detected -->
+      <input type="hidden" id="latitude"          name="latitude"          value="{{ form_data.latitude|default:'' }}"/>
+      <input type="hidden" id="longitude"         name="longitude"         value="{{ form_data.longitude|default:'' }}"/>
+      <input type="hidden" id="location_accuracy" name="location_accuracy" value="{{ form_data.location_accuracy|default:'' }}"/>
+
+      <div class="form-grid">
+
+        <!-- SECTION: Personal Info -->
+        <div class="section-label">Personal Information</div>
+
+        <!-- Full Name -->
+        <div class="form-group">
+          <label for="name">Full Name <span class="req">*</span></label>
+          <input type="text" id="name" name="name"
+                 placeholder="Officer Full Name"
+                 value="{{ form_data.name|default:'' }}" required/>
+        </div>
+
+        <!-- Officer ID -->
+        <div class="form-group">
+          <label for="officer_id">Officer ID <span class="req">*</span></label>
+          <input type="text" id="officer_id" name="officer_id"
+                 placeholder="e.g. FO-2024-001"
+                 value="{{ form_data.officer_id|default:'' }}" required/>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label for="email">Email Address <span class="req">*</span></label>
+          <input type="email" id="email" name="email"
+                 placeholder="officer@forestdept.gov"
+                 value="{{ form_data.email|default:'' }}" required
+                 oninput="validateEmail(this)" onblur="validateEmail(this)"/>
+          <div class="field-feedback" id="email-feedback"></div>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-group">
+          <label for="phone">Phone Number <span class="req">*</span></label>
+          <input type="tel" id="phone" name="phone"
+                 placeholder="10-digit number"
+                 value="{{ form_data.phone|default:'' }}"
+                 pattern="[0-9]{10}" maxlength="10" required
+                 oninput="validatePhone(this)" onblur="validatePhone(this)"/>
+          <div class="field-feedback" id="phone-feedback"></div>
+        </div>
+
+        <!-- SECTION: Service Details -->
+        <div class="section-label" style="margin-top:0.4rem;">Service Details</div>
+
+        <!-- Designation -->
+        <div class="form-group">
+          <label for="designation">Designation <span class="req">*</span></label>
+          <div class="select-wrap">
+            <select id="designation" name="designation" required>
+              <option value="" disabled {% if not form_data.designation %}selected{% endif %}>Select designation</option>
+              <option value="Range Forest Officer"      {% if form_data.designation == 'Range Forest Officer'      %}selected{% endif %}>Range Forest Officer</option>
+              <option value="Deputy Range Officer"      {% if form_data.designation == 'Deputy Range Officer'      %}selected{% endif %}>Deputy Range Officer</option>
+              <option value="Forest Guard"              {% if form_data.designation == 'Forest Guard'              %}selected{% endif %}>Forest Guard</option>
+              <option value="Beat Forest Officer"       {% if form_data.designation == 'Beat Forest Officer'       %}selected{% endif %}>Beat Forest Officer</option>
+              <option value="Wildlife Warden"           {% if form_data.designation == 'Wildlife Warden'           %}selected{% endif %}>Wildlife Warden</option>
+              <option value="Divisional Forest Officer" {% if form_data.designation == 'Divisional Forest Officer' %}selected{% endif %}>Divisional Forest Officer</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Forest Range -->
+        <div class="form-group">
+          <label for="forest_range">Forest Range <span class="req">*</span></label>
+          <input type="text" id="forest_range" name="forest_range"
+                 placeholder="e.g. Wayanad North Range"
+                 value="{{ form_data.forest_range|default:'' }}" required/>
+        </div>
+
+        <!-- Office Location (full width) -->
+        <div class="form-group full">
+          <label for="office_location">Office Location <span class="req">*</span></label>
+          <div class="location-row">
+            <input type="text" id="office_location" name="office_location"
+                   placeholder="Detected location will appear here…"
+                   value="{{ form_data.office_location|default:'' }}" required readonly/>
+            <button type="button" class="btn-detect" id="detectBtn">
+              <span class="detect-icon">📍</span>
+              Detect Location
+            </button>
+          </div>
+          <span id="loc-status" class="info"></span>
+        </div>
+
+        <!-- SECTION: Profile Photo -->
+        <div class="section-label" style="margin-top:0.4rem;">Profile Photo</div>
+
+        <!-- Profile Image (full width) -->
+        <div class="form-group full">
+          <div class="avatar-row">
+            <div class="avatar-preview" id="avatarPreview">
+              🪖
+              <img id="avatarImg" src="" alt="preview"/>
+            </div>
+            <div class="avatar-info">
+              <div class="file-wrap">
+                <span class="file-icon">📷</span>
+                <span class="file-label"><span>Choose a photo</span> or drag & drop</span>
+                <input type="file" id="profile_image" name="profile_image"
+                       accept="image/*" onchange="previewAvatar(this)"/>
+              </div>
+              <div id="file-name"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION: Security -->
+        <div class="section-label" style="margin-top:0.4rem;">Account Security</div>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label for="password">Password <span class="req">*</span></label>
+          <div class="pw-wrap">
+            <input type="password" id="password" name="password"
+                   placeholder="Min 8 characters" required
+                   oninput="checkStrength(this.value); validatePassword(this)"
+                   onblur="validatePassword(this)"/>
+            <button type="button" class="pw-toggle" onclick="togglePw('password', this)">👁</button>
+          </div>
+          <div class="strength-bar">
+            <div class="strength-fill" id="strengthFill"></div>
+          </div>
+          <div class="strength-text" id="strengthText"></div>
+          <div class="field-feedback" id="password-feedback"></div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group">
+          <label for="confirm_password">Confirm Password <span class="req">*</span></label>
+          <div class="pw-wrap">
+            <input type="password" id="confirm_password" name="confirm_password"
+                   placeholder="Repeat password" required
+                   oninput="checkMatch(); validateConfirmPassword(this)"
+                   onblur="validateConfirmPassword(this)"/>
+            <button type="button" class="pw-toggle" onclick="togglePw('confirm_password', this)">👁</button>
+          </div>
+          <div class="strength-text" id="matchText"></div>
+        </div>
+
+      </div><!-- /form-grid -->
+
+      <!-- Submit -->
+      <div style="margin-top:1.8rem;">
+        <button type="submit" class="btn-submit">
+          🛡️ Register Officer Account
+        </button>
+      </div>
+
+    </form>
+
+    <p class="form-footer">
+      Already have an account? <a href="{% url 'officer_login' %}">Sign in →</a>
+    </p>
+
+  </div><!-- /card -->
+</div><!-- /page -->
+
+<script>
+  /* ── GEOLOCATION ── */
+  const detectBtn  = document.getElementById('detectBtn');
+  const locInput   = document.getElementById('office_location');
+  const locStatus  = document.getElementById('loc-status');
+
+  // Hidden fields for lat/lng/accuracy
+  const latInput  = document.getElementById('latitude');
+  const lngInput  = document.getElementById('longitude');
+  const accInput  = document.getElementById('location_accuracy');
+
+  detectBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      setStatus('Geolocation is not supported by your browser.', 'err');
+      return;
+    }
+    detectBtn.classList.add('loading');
+    detectBtn.innerHTML = '<span class="detect-icon">⏳</span> Detecting…';
+    setStatus('Requesting location permission…', 'info');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+
+        // Populate hidden fields
+        latInput.value = latitude;
+        lngInput.value = longitude;
+        if (accuracy) accInput.value = accuracy;
+
+        setStatus('📡 Fetching address…', 'info');
+
+        try {
+          const res  = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          const data = await res.json();
+          const addr = data.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+          locInput.value = addr;
+          locInput.removeAttribute('readonly');
+          setStatus('✔ Location detected successfully.', 'ok');
+        } catch {
+          locInput.value = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          locInput.removeAttribute('readonly');
+          setStatus('✔ Coordinates captured (no address lookup available).', 'ok');
+        }
+
+        resetDetectBtn();
+      },
+      (err) => {
+        const msgs = {
+          1: 'Permission denied. Please allow location access.',
+          2: 'Location unavailable. Try again.',
+          3: 'Request timed out. Try again.',
+        };
+        setStatus(msgs[err.code] || 'Could not detect location.', 'err');
+        resetDetectBtn();
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  });
+
+  function setStatus(msg, type) {
+    locStatus.textContent = msg;
+    locStatus.className   = type;
+  }
+
+  function resetDetectBtn() {
+    detectBtn.classList.remove('loading');
+    detectBtn.innerHTML = '<span class="detect-icon">📍</span> Detect Location';
+  }
+
+  /* ── AVATAR PREVIEW ── */
+  function previewAvatar(input) {
+    const fn   = document.getElementById('file-name');
+    const img  = document.getElementById('avatarImg');
+    const box  = document.getElementById('avatarPreview');
+
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      fn.textContent = file.name;
+      fn.style.display = 'block';
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        img.src = e.target.result;
+        img.style.display = 'block';
+        box.textContent = '';
+        box.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  /* ── PASSWORD TOGGLE ── */
+  function togglePw(id, btn) {
+    const inp = document.getElementById(id);
+    const isText = inp.type === 'text';
+    inp.type = isText ? 'password' : 'text';
+    btn.textContent = isText ? '👁' : '🙈';
+  }
+
+  /* ── PASSWORD STRENGTH ── */
+  function checkStrength(val) {
+    const fill = document.getElementById('strengthFill');
+    const text = document.getElementById('strengthText');
+    let score  = 0;
+    if (val.length >= 8)                     score++;
+    if (/[A-Z]/.test(val))                   score++;
+    if (/[0-9]/.test(val))                   score++;
+    if (/[^A-Za-z0-9]/.test(val))            score++;
+
+    const levels = [
+      { pct: '0%',   col: 'transparent', lbl: '' },
+      { pct: '30%',  col: '#e05555',     lbl: 'Weak' },
+      { pct: '55%',  col: '#e0a030',     lbl: 'Fair' },
+      { pct: '78%',  col: '#5a9e10',     lbl: 'Good' },
+      { pct: '100%', col: '#6dba18',     lbl: 'Strong 🔒' },
+    ];
+    const lvl = levels[score];
+    fill.style.width      = lvl.pct;
+    fill.style.background = lvl.col;
+    text.textContent      = lvl.lbl;
+    text.style.color      = lvl.col;
+
+    checkMatch();
+  }
+
+  /* ── PASSWORD MATCH ── */
+  function checkMatch() {
+    const pw  = document.getElementById('password').value;
+    const cpw = document.getElementById('confirm_password').value;
+    const mt  = document.getElementById('matchText');
+    if (!cpw) { mt.textContent = ''; return; }
+    if (pw === cpw) {
+      mt.textContent = '✔ Passwords match';
+      mt.style.color = 'var(--kiwi)';
+    } else {
+      mt.textContent = '✘ Does not match';
+      mt.style.color = 'var(--red)';
+    }
+  }
+
+  /* ══════════════════════════════════════════
+     ── NEW: FIELD VALIDATION HELPERS ──
+  ══════════════════════════════════════════ */
+
+  function setFeedback(el, msg, isValid) {
+    el.textContent = msg;
+    el.className = 'field-feedback ' + (isValid ? 'valid' : 'invalid');
+  }
+
+  function clearFeedback(el) {
+    el.textContent = '';
+    el.className = 'field-feedback';
+  }
+
+  /* ── EMAIL VALIDATION ── */
+  function validateEmail(input) {
+    const fb  = document.getElementById('email-feedback');
+    const val = input.value.trim();
+
+    if (!val) {
+      clearFeedback(fb);
+      input.classList.remove('field-valid', 'field-invalid');
+      return false;
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+    const localPart  = val.split('@')[0] || '';
+    const domain     = val.split('@')[1] || '';
+
+    if (!emailRegex.test(val)) {
+      setFeedback(fb, '✘ Enter a valid email address (e.g. name@domain.com)', false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+    if (localPart.length > 64) {
+      setFeedback(fb, '✘ Local part of email is too long', false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+    if (domain.length > 253) {
+      setFeedback(fb, '✘ Domain part of email is too long', false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+    if (/\.{2,}/.test(val)) {
+      setFeedback(fb, '✘ Email cannot contain consecutive dots', false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+
+    setFeedback(fb, '✔ Valid email address', true);
+    input.classList.remove('field-invalid'); input.classList.add('field-valid');
+    return true;
+  }
+
+  /* ── PHONE VALIDATION (exactly 10 digits) ── */
+  function validatePhone(input) {
+    const fb      = document.getElementById('phone-feedback');
+    const cleaned = input.value.replace(/\D/g, '');
+    input.value   = cleaned.slice(0, 10); // strip non-digits & cap at 10
+
+    if (!input.value) {
+      clearFeedback(fb);
+      input.classList.remove('field-valid', 'field-invalid');
+      return false;
+    }
+    if (input.value.length < 10) {
+      const rem = 10 - input.value.length;
+      setFeedback(fb, `✘ ${rem} more digit${rem > 1 ? 's' : ''} needed`, false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+    if (/^(\d)\1{9}$/.test(input.value)) {
+      setFeedback(fb, '✘ Phone number cannot be all identical digits', false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+
+    setFeedback(fb, '✔ Valid phone number', true);
+    input.classList.remove('field-invalid'); input.classList.add('field-valid');
+    return true;
+  }
+
+  /* ── PASSWORD VALIDATION ── */
+  function validatePassword(input) {
+    const fb  = document.getElementById('password-feedback');
+    const val = input.value;
+
+    if (!val) {
+      clearFeedback(fb);
+      input.classList.remove('field-valid', 'field-invalid');
+      return false;
+    }
+
+    const errors = [];
+    if (val.length < 8)            errors.push('at least 8 characters');
+    if (!/[A-Z]/.test(val))        errors.push('one uppercase letter');
+    if (!/[a-z]/.test(val))        errors.push('one lowercase letter');
+    if (!/[0-9]/.test(val))        errors.push('one number');
+    if (!/[^A-Za-z0-9]/.test(val)) errors.push('one special character');
+
+    if (errors.length) {
+      setFeedback(fb, `✘ Needs: ${errors.join(', ')}`, false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+
+    setFeedback(fb, '✔ Strong password', true);
+    input.classList.remove('field-invalid'); input.classList.add('field-valid');
+    const confirm = document.getElementById('confirm_password');
+    if (confirm.value) validateConfirmPassword(confirm);
+    return true;
+  }
+
+  /* ── CONFIRM PASSWORD VALIDATION ── */
+  function validateConfirmPassword(input) {
+    const pw = document.getElementById('password').value;
+    const mt = document.getElementById('matchText');
+
+    if (!input.value) {
+      mt.textContent = '';
+      input.classList.remove('field-valid', 'field-invalid');
+      return false;
+    }
+    if (input.value !== pw) {
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+    input.classList.remove('field-invalid'); input.classList.add('field-valid');
+    return true;
+  }
+
+  /* ── Phone: block non-digit keypresses ── */
+  document.getElementById('phone').addEventListener('keypress', function(e) {
+    if (!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  /* ── FORM SUBMIT GUARD ── */
+  document.getElementById('officerForm').addEventListener('submit', function(e) {
+    const emailOk   = validateEmail(document.getElementById('email'));
+    const phoneOk   = validatePhone(document.getElementById('phone'));
+    const pwOk      = validatePassword(document.getElementById('password'));
+    const confirmOk = validateConfirmPassword(document.getElementById('confirm_password'));
+
+    if (!emailOk || !phoneOk || !pwOk || !confirmOk) {
+      e.preventDefault();
+      const firstInvalid = document.querySelector('.field-invalid');
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalid.focus();
+      }
+    }
+  });
+</script>
+</body>
+</html>

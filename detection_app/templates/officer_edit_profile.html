@@ -1,0 +1,621 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Edit Officer Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --black:            #ffffff;
+      --black-2:          #f3f8ee;
+      --black-3:          #e8f2df;
+      --black-4:          #ddecd0;
+      --kiwi:             #5a9e10;
+      --kiwi-bright:      #6dba18;
+      --kiwi-dim:         #3d7008;
+      --kiwi-glow:        rgba(90,158,16,0.15);
+      --kiwi-glow-strong: rgba(90,158,16,0.30);
+      --white:            #1a2e0e;
+      --grey:             #5a7a4a;
+      --red:              #e05555;
+      --amber:            #d97706;
+      --blue:             #2563eb;
+      --sidebar-w:        260px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    .page-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+
+    /* ══ SIDEBAR ══ */
+    .sidebar {
+      position: fixed; top:0; left:0; bottom:0;
+      width: var(--sidebar-w);
+      background: rgba(243,248,238,0.97);
+      border-right: 1px solid rgba(90,158,16,0.15);
+      display: flex; flex-direction: column;
+      z-index: 200; backdrop-filter: blur(12px);
+      transition: transform 0.3s ease;
+    }
+    .sidebar-logo { display:flex; align-items:center; gap:0.65rem; padding:1.4rem 1.4rem 1.2rem; border-bottom:1px solid rgba(90,158,16,0.12); text-decoration:none; flex-shrink:0; }
+    .sidebar-logo-icon { width:36px; height:36px; background:var(--kiwi); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; box-shadow:0 0 16px var(--kiwi-glow-strong); flex-shrink:0; }
+    .sidebar-logo-text { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.12em; color:var(--white); line-height:1; }
+    .sidebar-logo-text span { color:var(--kiwi); }
+    .sidebar-logo-sub { font-family:'Space Mono',monospace; font-size:0.48rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); margin-top:1px; }
+
+    .officer-badge { margin:1rem 1.2rem 0.8rem; background:rgba(90,158,16,0.07); border:1px solid rgba(90,158,16,0.18); border-radius:10px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.7rem; flex-shrink:0; }
+    .officer-avatar { width:40px; height:40px; border-radius:50%; background:var(--black-3); border:2px solid rgba(90,158,16,0.3); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; overflow:hidden; }
+    .officer-avatar img { width:100%; height:100%; object-fit:cover; }
+    .officer-info { min-width:0; flex:1; }
+    .officer-name { font-weight:700; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .officer-role { font-family:'Space Mono',monospace; font-size:0.54rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--kiwi); margin-top:1px; }
+    .officer-id-tag { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.08em; color:var(--grey); margin-top:2px; }
+    .officer-dot { width:8px; height:8px; border-radius:50%; background:var(--kiwi); margin-left:auto; flex-shrink:0; animation:pulse 2s infinite; box-shadow:0 0 6px var(--kiwi); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .sidebar-nav { flex:1; overflow-y:auto; padding:0.6rem 0.8rem; scrollbar-width:thin; scrollbar-color:rgba(90,158,16,0.2) transparent; }
+    .nav-section-label { font-family:'Space Mono',monospace; font-size:0.52rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--grey); padding:0.8rem 0.6rem 0.4rem; opacity:0.7; }
+    .nav-item { display:flex; align-items:center; gap:0.7rem; padding:0.62rem 0.9rem; border-radius:8px; text-decoration:none; color:var(--grey); font-size:0.84rem; font-weight:600; transition:background 0.2s,color 0.2s; cursor:pointer; margin-bottom:2px; }
+    .nav-item:hover { background:rgba(90,158,16,0.08); color:var(--white); }
+    .nav-item.active { background:rgba(90,158,16,0.12); color:var(--kiwi); border-left:3px solid var(--kiwi); }
+    .nav-icon { font-size:1rem; flex-shrink:0; width:20px; text-align:center; }
+
+    .sidebar-footer { padding:0.8rem; border-top:1px solid rgba(90,158,16,0.12); flex-shrink:0; }
+    .btn-logout { width:100%; display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.9rem; background:rgba(224,85,85,0.06); border:1px solid rgba(224,85,85,0.2); border-radius:8px; color:var(--red); font-family:'Space Mono',monospace; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; text-decoration:none; transition:background 0.2s,border-color 0.2s; }
+    .btn-logout:hover { background:rgba(224,85,85,0.12); border-color:rgba(224,85,85,0.4); }
+
+    /* ══ TOPBAR ══ */
+    .topbar { position:fixed; top:0; left:var(--sidebar-w); right:0; height:62px; background:rgba(255,255,255,0.95); border-bottom:1px solid rgba(90,158,16,0.12); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; padding:0 2rem; z-index:150; transition:left 0.3s; }
+    .topbar-left { display:flex; align-items:center; gap:0.8rem; }
+    .topbar-page-label { font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); }
+    .topbar-page-title { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.06em; color:var(--white); }
+    .topbar-sep { width:1px; height:24px; background:rgba(90,158,16,0.2); }
+    .topbar-right { display:flex; align-items:center; gap:1rem; }
+    .topbar-time { font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; color:var(--grey); }
+    .topbar-alert-dot { width:10px; height:10px; border-radius:50%; background:var(--kiwi); animation:pulse 1.5s infinite; box-shadow:0 0 8px var(--kiwi); }
+
+    .hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:4px; background:none; border:none; }
+    .hamburger span { display:block; width:22px; height:2px; background:var(--kiwi); border-radius:2px; }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.6); backdrop-filter:blur(2px); z-index:190; }
+    .sidebar-overlay.open { display:block; }
+
+    .scanline-bar { position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--kiwi),transparent); opacity:0; animation:scanBar 8s ease-in-out infinite; }
+    @keyframes scanBar { 0%{left:-100%;opacity:0} 10%{opacity:0.4} 90%{opacity:0.2} 100%{left:100%;opacity:0} }
+
+    /* ══ MAIN ══ */
+    .main { margin-left:var(--sidebar-w); padding-top:62px; min-height:100vh; position:relative; z-index:1; transition:margin-left 0.3s; }
+    .content { padding:2rem 2rem 3rem; max-width:1000px; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ══ PAGE HEADER ══ */
+    .page-header {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:2rem; flex-wrap:wrap; gap:1rem;
+      animation:fadeUp 0.4s ease forwards; opacity:0;
+    }
+    .page-header-left { display:flex; align-items:center; gap:0.8rem; }
+    .page-header-icon { width:44px; height:44px; background:rgba(90,158,16,0.1); border:1px solid rgba(90,158,16,0.25); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; }
+    .page-header-label { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); }
+    .page-header-title { font-family:'Bebas Neue',sans-serif; font-size:1.7rem; letter-spacing:0.06em; color:var(--white); line-height:1; }
+    .btn-cancel { display:inline-flex; align-items:center; gap:0.5rem; padding:0.7rem 1.3rem; background:transparent; border:1px solid rgba(90,122,74,0.3); border-radius:10px; color:var(--grey); font-family:'Space Mono',monospace; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; text-decoration:none; cursor:pointer; transition:background 0.2s,border-color 0.2s; }
+    .btn-cancel:hover { background:rgba(90,122,74,0.06); border-color:rgba(90,122,74,0.5); }
+
+    /* ══ EDIT BANNER ══ */
+    .edit-banner {
+      background:linear-gradient(135deg, rgba(90,158,16,0.1) 0%, rgba(61,112,8,0.05) 100%);
+      border:1px solid rgba(90,158,16,0.2); border-radius:12px;
+      padding:1.2rem 1.5rem; margin-bottom:1.8rem;
+      display:flex; align-items:center; gap:1rem;
+      animation:fadeUp 0.45s ease forwards; opacity:0;
+    }
+    .edit-banner-icon { font-size:1.6rem; flex-shrink:0; }
+    .edit-banner-title { font-weight:700; font-size:0.9rem; color:var(--kiwi); }
+    .edit-banner-sub { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--grey); margin-top:3px; }
+
+    /* ══ AVATAR SECTION ══ */
+    .avatar-section {
+      background:var(--black-2); border:1px solid rgba(90,158,16,0.15);
+      border-radius:12px; padding:1.8rem; margin-bottom:1.4rem;
+      display:flex; align-items:center; gap:1.8rem;
+      animation:fadeUp 0.5s ease forwards; opacity:0;
+      flex-wrap:wrap;
+    }
+    .edit-avatar-wrap { position:relative; flex-shrink:0; cursor:pointer; }
+    .edit-avatar { width:90px; height:90px; border-radius:50%; border:3px solid rgba(90,158,16,0.3); background:var(--black-3); display:flex; align-items:center; justify-content:center; font-size:2.5rem; overflow:hidden; }
+    .edit-avatar img { width:100%; height:100%; object-fit:cover; }
+    .edit-avatar-overlay { position:absolute; inset:0; border-radius:50%; background:rgba(90,158,16,0); display:flex; align-items:center; justify-content:center; transition:background 0.2s; }
+    .edit-avatar-wrap:hover .edit-avatar-overlay { background:rgba(90,158,16,0.3); }
+    .edit-avatar-overlay span { opacity:0; transition:opacity 0.2s; font-size:1.2rem; }
+    .edit-avatar-wrap:hover .edit-avatar-overlay span { opacity:1; }
+    .avatar-info { flex:1; min-width:0; }
+    .avatar-info-name { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:0.06em; }
+    .avatar-info-id { font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.1em; color:var(--grey); margin-top:2px; }
+    .avatar-upload-btn { display:inline-flex; align-items:center; gap:0.45rem; margin-top:0.8rem; padding:0.55rem 1.1rem; background:rgba(90,158,16,0.08); border:1px solid rgba(90,158,16,0.25); border-radius:8px; color:var(--kiwi); font-family:'Space Mono',monospace; font-size:0.62rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; transition:background 0.2s; }
+    .avatar-upload-btn:hover { background:rgba(90,158,16,0.14); }
+    .avatar-upload-note { font-family:'Space Mono',monospace; font-size:0.55rem; color:var(--grey); margin-top:0.5rem; opacity:0.75; }
+
+    /* ══ PANEL ══ */
+    .panel { background:var(--black-2); border:1px solid rgba(90,158,16,0.15); border-radius:12px; overflow:hidden; animation:fadeUp 0.6s ease forwards; opacity:0; margin-bottom:1.4rem; }
+    .panel-header { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.4rem; border-bottom:1px solid rgba(90,158,16,0.1); background:rgba(90,158,16,0.03); }
+    .panel-title { font-family:'Space Mono',monospace; font-size:0.63rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--kiwi); display:flex; align-items:center; gap:0.5rem; }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:var(--kiwi); animation:pulse 1.5s infinite; display:inline-block; }
+    .panel-body { padding:1.4rem; }
+
+    /* ══ FORM ══ */
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; }
+    .form-group { display:flex; flex-direction:column; gap:0.4rem; }
+    .form-group.full { grid-column:1 / -1; }
+    .form-label { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--grey); display:flex; align-items:center; gap:0.4rem; }
+    .form-label .required { color:var(--red); }
+    .form-input-wrap { position:relative; }
+    .form-input-icon { position:absolute; left:0.85rem; top:50%; transform:translateY(-50%); font-size:0.9rem; pointer-events:none; }
+    .form-input {
+      width:100%; background:var(--black-3); border:1px solid rgba(90,158,16,0.2); border-radius:8px;
+      padding:0.75rem 0.95rem; font-family:'Syne',sans-serif; font-size:0.88rem; font-weight:600;
+      color:var(--white); outline:none; transition:border-color 0.2s,box-shadow 0.2s,background 0.2s;
+      -webkit-appearance:none;
+    }
+    .form-input-wrap .form-input { padding-left:2.4rem; }
+    .form-input::placeholder { color:var(--grey); font-weight:400; opacity:0.6; }
+    .form-input:focus { border-color:var(--kiwi); background:var(--black-4); box-shadow:0 0 0 3px var(--kiwi-glow); }
+    .form-input:hover:not(:focus):not(.readonly) { border-color:rgba(90,158,16,0.35); }
+    .form-input.readonly { background:rgba(90,122,74,0.06); border-color:rgba(90,122,74,0.15); color:var(--grey); cursor:not-allowed; }
+    .form-hint { font-family:'Space Mono',monospace; font-size:0.54rem; letter-spacing:0.04em; color:var(--grey); opacity:0.7; margin-top:2px; }
+
+    /* ══ VALIDATION STATES ══ */
+    .form-input.field-valid {
+      border-color: var(--kiwi) !important;
+      box-shadow: 0 0 0 2px rgba(90,158,16,0.10) !important;
+    }
+    .form-input.field-invalid {
+      border-color: var(--red) !important;
+      box-shadow: 0 0 0 2px rgba(224,85,85,0.10) !important;
+    }
+
+    /* ══ FIELD FEEDBACK ══ */
+    .field-feedback {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.56rem;
+      letter-spacing: 0.07em;
+      min-height: 0.85rem;
+      margin-top: 0.15rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: color 0.2s;
+    }
+    .field-feedback.valid   { color: var(--kiwi); }
+    .field-feedback.invalid { color: var(--red); }
+
+    /* ══ FORM ACTIONS ══ */
+    .form-actions { display:flex; align-items:center; justify-content:flex-end; gap:1rem; padding:1.2rem 1.4rem; border-top:1px solid rgba(90,158,16,0.1); background:rgba(90,158,16,0.02); flex-wrap:wrap; }
+    .btn-save { display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1.8rem; background:var(--kiwi); border:none; border-radius:10px; color:#fff; font-family:'Space Mono',monospace; font-size:0.7rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; transition:background 0.2s,transform 0.15s,box-shadow 0.2s; box-shadow:0 4px 14px var(--kiwi-glow-strong); }
+    .btn-save:hover { background:var(--kiwi-bright); transform:translateY(-1px); box-shadow:0 6px 20px var(--kiwi-glow-strong); }
+    .btn-save:active { transform:translateY(0); }
+    .btn-save:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+    .btn-discard { display:inline-flex; align-items:center; gap:0.5rem; padding:0.75rem 1.3rem; background:transparent; border:1px solid rgba(90,122,74,0.25); border-radius:10px; color:var(--grey); font-family:'Space Mono',monospace; font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; text-decoration:none; cursor:pointer; transition:background 0.2s,border-color 0.2s; }
+    .btn-discard:hover { background:rgba(90,122,74,0.05); border-color:rgba(90,122,74,0.4); }
+
+    /* ══ TOAST ══ */
+    .toast { position:fixed; bottom:2rem; right:2rem; background:var(--kiwi); color:#fff; padding:0.85rem 1.4rem; border-radius:10px; font-family:'Space Mono',monospace; font-size:0.7rem; font-weight:700; letter-spacing:0.08em; display:flex; align-items:center; gap:0.6rem; box-shadow:0 8px 24px var(--kiwi-glow-strong); z-index:999; transform:translateY(100px); opacity:0; transition:transform 0.3s ease,opacity 0.3s ease; }
+    .toast.show { transform:translateY(0); opacity:1; }
+
+    /* ══ RESPONSIVE ══ */
+    @media (max-width:1024px) {
+      :root { --sidebar-w:220px; }
+      .content { padding:1.5rem 1.5rem 3rem; }
+    }
+    @media (max-width:900px) {
+      .form-grid { grid-template-columns:1fr; }
+      .form-group.full { grid-column:1; }
+    }
+    @media (max-width:768px) {
+      :root { --sidebar-w:260px; }
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); box-shadow:4px 0 30px rgba(90,158,16,0.15); }
+      .topbar { left:0; }
+      .hamburger { display:flex; }
+      .main { margin-left:0; }
+      .content { padding:1.2rem 1rem 3rem; }
+      .avatar-section { flex-direction:column; align-items:flex-start; gap:1.2rem; }
+      .page-header { flex-direction:column; align-items:flex-start; }
+      .form-actions { justify-content:stretch; }
+      .btn-save, .btn-discard { flex:1; justify-content:center; }
+    }
+    @media (max-width:480px) {
+      .topbar-time { display:none; }
+      .toast { left:1rem; right:1rem; bottom:1rem; }
+      .content { padding:1rem 0.75rem 3rem; }
+    }
+
+    /* ── Touch targets ── */
+    @media (hover: none) and (pointer: coarse) {
+      .form-input { font-size: 1rem; padding: 0.85rem 0.95rem; }
+      .form-input-wrap .form-input { padding-left: 2.6rem; }
+      .btn-save { padding: 1rem 1.8rem; }
+      .btn-discard { padding: 1rem 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <a href="{% url 'officer_home' %}" class="sidebar-logo">
+    <div class="sidebar-logo-icon">🐾</div>
+    <div>
+      <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+      <div class="sidebar-logo-sub">Officer Portal</div>
+    </div>
+  </a>
+
+  <div class="officer-badge">
+    <div class="officer-avatar">
+      {% if officer.profile_image %}
+        <img src="{{ officer.profile_image.url }}" alt="{{ officer.name }}"/>
+      {% else %}🪖{% endif %}
+    </div>
+    <div class="officer-info">
+      <div class="officer-name">{{ officer.name|default:"Officer" }}</div>
+      <div class="officer-role">{{ officer.designation|default:"Forest Officer" }}</div>
+      <div class="officer-id-tag">{{ officer.officer_id|default:"—" }}</div>
+    </div>
+    <div class="officer-dot"></div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-item" href="{% url 'officer_home' %}">
+      <span class="nav-icon">📊</span>Dashboard
+    </a>
+
+    <div class="nav-section-label">Alerts</div>
+    <a class="nav-item" href="{% url 'officer_alerts_list' %}">
+      <span class="nav-icon">🔔</span>Wildlife Alerts
+    </a>
+    <a class="nav-item" href="{% url 'officer_sos_report_list' %}">
+      <span class="nav-icon">🚨</span>Emergency Reports
+    </a>
+
+    <div class="nav-section-label">Field</div>
+    <a class="nav-item" href="{% url 'officer_danger_zone' %}">
+      <span class="nav-icon">⚠️</span>Danger Zones
+    </a>
+
+    <div class="nav-section-label">My Account</div>
+    <a class="nav-item active" href="{% url 'officer_profile' %}">
+      <span class="nav-icon">👤</span>My Profile
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="{% url 'logout' %}" class="btn-logout"><span>⏏</span> Log Out</a>
+  </div>
+</aside>
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-sep"></div>
+    <div>
+      <div class="topbar-page-label">// My Account</div>
+      <div class="topbar-page-title">EDIT PROFILE</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-time" id="liveClock"></div>
+    <div class="topbar-alert-dot"></div>
+  </div>
+  <div class="scanline-bar"></div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+<div class="content">
+
+  <!-- ── PAGE HEADER ── -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="page-header-icon">✏️</div>
+      <div>
+        <div class="page-header-label">// My Account</div>
+        <div class="page-header-title">EDIT PROFILE</div>
+      </div>
+    </div>
+    <a href="{% url 'officer_profile' %}" class="btn-cancel">← Cancel</a>
+  </div>
+
+  <!-- ── INFO BANNER ── -->
+  <div class="edit-banner">
+    <div class="edit-banner-icon">🛡️</div>
+    <div>
+      <div class="edit-banner-title">Update Officer Information</div>
+      <div class="edit-banner-sub">Changes will be reflected across the WildGuard Officer Portal immediately after saving.</div>
+    </div>
+  </div>
+
+  <!-- ── FORM ── -->
+  <form method="POST" enctype="multipart/form-data" id="editForm">
+    {% csrf_token %}
+
+    <!-- Avatar -->
+    <div class="avatar-section">
+      <div class="edit-avatar-wrap" id="avatarWrap">
+        <div class="edit-avatar" id="avatarPreview">
+          {% if officer.profile_image %}
+            <img src="{{ officer.profile_image.url }}" alt="Avatar" id="avatarImg"/>
+          {% else %}
+            <span>🪖</span>
+          {% endif %}
+        </div>
+        <div class="edit-avatar-overlay"><span>📷</span></div>
+      </div>
+      <div class="avatar-info">
+        <div class="avatar-info-name">{{ officer.name|default:"Forest Officer" }}</div>
+        <div class="avatar-info-id">{{ officer.officer_id|default:"—" }} · {{ officer.designation|default:"Officer" }}</div>
+        <label for="profileImageInput" class="avatar-upload-btn">📷 &nbsp;Upload Photo</label>
+        <div class="avatar-upload-note">JPG, PNG or WEBP — max 5MB</div>
+      </div>
+      <input type="file" id="profileImageInput" name="profile_image" accept="image/*" style="display:none;">
+    </div>
+
+    <!-- Personal Info -->
+    <div class="panel" style="animation-delay:0.1s;">
+      <div class="panel-header">
+        <div class="panel-title"><span class="live-dot"></span> Personal Information</div>
+      </div>
+      <div class="panel-body">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label class="form-label" for="name">Full Name <span class="required">*</span></label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">🪖</span>
+              <input type="text" id="name" name="name" class="form-input"
+                     value="{{ officer.name }}" placeholder="Enter full name" required maxlength="100"/>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="officer_id_display">Officer ID</label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">🔑</span>
+              <input type="text" id="officer_id_display" class="form-input readonly"
+                     value="{{ officer.officer_id }}" readonly/>
+            </div>
+            <div class="form-hint">Officer ID cannot be changed</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="email">Email Address <span class="required">*</span></label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">📧</span>
+              <input type="text" id="email" name="email" class="form-input"
+                     value="{{ officer.email }}" placeholder="officer@example.com" readonly/>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="phone">Phone Number <span class="required">*</span></label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">📞</span>
+              <input type="tel" id="phone" name="phone" class="form-input"
+                     value="{{ officer.phone }}" placeholder="10-digit number"
+                     pattern="[0-9]{10}" maxlength="10" required
+                     oninput="validatePhone(this)" onblur="validatePhone(this)"/>
+            </div>
+            <div class="field-feedback" id="phone-feedback"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Service Info -->
+    <div class="panel" style="animation-delay:0.15s;">
+      <div class="panel-header">
+        <div class="panel-title"><span class="live-dot"></span> Service Information</div>
+      </div>
+      <div class="panel-body">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label class="form-label" for="designation">Designation <span class="required">*</span></label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">🏅</span>
+              <input type="text" id="designation" name="designation" class="form-input"
+                     value="{{ officer.designation }}" placeholder="e.g. Range Forest Officer" required maxlength="100"/>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="forest_range">Forest Range <span class="required">*</span></label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">🌲</span>
+              <input type="text" id="forest_range" name="forest_range" class="form-input"
+                     value="{{ officer.forest_range }}" placeholder="e.g. Wayanad North Range" required maxlength="150"/>
+            </div>
+          </div>
+
+          <div class="form-group full">
+            <label class="form-label" for="office_location">Office Location <span class="required">*</span></label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">📍</span>
+              <input type="text" id="office_location" name="office_location" class="form-input"
+                     value="{{ officer.location_address }}" placeholder="e.g. Forest Range Office, Mananthavady" required maxlength="200" readonly/>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Account Status</label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">{% if officer.status %}✅{% else %}⛔{% endif %}</span>
+              <input type="text" class="form-input readonly"
+                     value="{% if officer.status %}Active{% else %}Inactive{% endif %}" readonly/>
+            </div>
+            <div class="form-hint">Status is managed by administration</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Registered Since</label>
+            <div class="form-input-wrap">
+              <span class="form-input-icon">🗓️</span>
+              <input type="text" class="form-input readonly"
+                     value="{{ officer.created_at|date:'d M Y' }}" readonly/>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a href="{% url 'officer_profile' %}" class="btn-discard">← Discard</a>
+        <button type="submit" class="btn-save" id="saveBtn">💾 &nbsp;Save Changes</button>
+      </div>
+    </div>
+
+  </form>
+
+</div>
+</main>
+
+<div class="toast" id="toast">✅ &nbsp;Profile updated successfully!</div>
+
+<script>
+  /* ── Sidebar ── */
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebarOverlay');
+  const hamburger = document.getElementById('hamburger');
+  hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+  overlay.addEventListener('click',   () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { sidebar.classList.remove('open'); overlay.classList.remove('open'); } });
+
+  /* ── Clock ── */
+  function updateClock() {
+    const n = new Date();
+    document.getElementById('liveClock').textContent =
+      String(n.getHours()).padStart(2,'0') + ':' +
+      String(n.getMinutes()).padStart(2,'0') + ':' +
+      String(n.getSeconds()).padStart(2,'0');
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  /* ── Avatar preview ── */
+  const fileInput     = document.getElementById('profileImageInput');
+  const avatarPreview = document.getElementById('avatarPreview');
+  document.getElementById('avatarWrap').addEventListener('click', () => fileInput.click());
+  document.querySelector('label[for="profileImageInput"]').addEventListener('click', e => e.stopPropagation());
+  fileInput.addEventListener('change', function() {
+    if (this.files && this.files[0]) {
+      const reader = new FileReader();
+      reader.onload = e => { avatarPreview.innerHTML = '<img src="' + e.target.result + '" alt="Preview" style="width:100%;height:100%;object-fit:cover;"/>'; };
+      reader.readAsDataURL(this.files[0]);
+    }
+  });
+
+  /* ── Toast on redirect with ?saved=1 ── */
+  if (new URLSearchParams(window.location.search).get('saved') === '1') {
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  /* ══════════════════════════════════════════
+     ── PHONE VALIDATION (exactly 10 digits) ──
+  ══════════════════════════════════════════ */
+
+  function setFeedback(el, msg, isValid) {
+    el.textContent = msg;
+    el.className = 'field-feedback ' + (isValid ? 'valid' : 'invalid');
+  }
+
+  function clearFeedback(el) {
+    el.textContent = '';
+    el.className = 'field-feedback';
+  }
+
+  function validatePhone(input) {
+    const fb      = document.getElementById('phone-feedback');
+    const cleaned = input.value.replace(/\D/g, '');
+    input.value   = cleaned.slice(0, 10); // strip non-digits, cap at 10
+
+    if (!input.value) {
+      clearFeedback(fb);
+      input.classList.remove('field-valid', 'field-invalid');
+      return false;
+    }
+    if (input.value.length < 10) {
+      const rem = 10 - input.value.length;
+      setFeedback(fb, `✘ ${rem} more digit${rem > 1 ? 's' : ''} needed`, false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+    if (/^(\d)\1{9}$/.test(input.value)) {
+      setFeedback(fb, '✘ Phone number cannot be all identical digits', false);
+      input.classList.remove('field-valid'); input.classList.add('field-invalid');
+      return false;
+    }
+
+    setFeedback(fb, '✔ Valid phone number', true);
+    input.classList.remove('field-invalid'); input.classList.add('field-valid');
+    return true;
+  }
+
+  /* ── Block non-digit keypresses on phone field ── */
+  document.getElementById('phone').addEventListener('keypress', function(e) {
+    if (!/[0-9]/.test(e.key) && !['Backspace','Delete','Tab','ArrowLeft','ArrowRight'].includes(e.key)) {
+      e.preventDefault();
+    }
+  });
+
+  /* ── Form submit guard ── */
+  document.getElementById('editForm').addEventListener('submit', function(e) {
+    const phoneOk = validatePhone(document.getElementById('phone'));
+    if (!phoneOk) {
+      e.preventDefault();
+      const inv = document.querySelector('.field-invalid');
+      if (inv) { inv.scrollIntoView({ behavior: 'smooth', block: 'center' }); inv.focus(); }
+      return;
+    }
+    /* Original save loading state */
+    const btn = document.getElementById('saveBtn');
+    btn.textContent = '⏳  Saving…';
+    btn.disabled = true;
+  });
+</script>
+</body>
+</html>

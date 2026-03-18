@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Wildlife Detection & Alert System</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --black: #ffffff;
+      --black-2: #f3f8ee;
+      --black-3: #e8f2df;
+      --kiwi: #5a9e10;
+      --kiwi-bright: #6dba18;
+      --kiwi-dim: #3d7008;
+      --kiwi-glow: rgba(90, 158, 16, 0.15);
+      --kiwi-glow-strong: rgba(90, 158, 16, 0.30);
+      --white: #1a2e0e;
+      --grey: #5a7a4a;
+      --nav-h: 68px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      overflow-x: hidden;
+      cursor: none;
+    }
+
+    /* === CUSTOM CURSOR (desktop only) === */
+    .cursor, .cursor-ring {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+    }
+    .cursor {
+      width: 12px; height: 12px;
+      background: var(--kiwi);
+      z-index: 9999;
+      transition: width 0.2s, height 0.2s;
+      mix-blend-mode: multiply;
+    }
+    .cursor-ring {
+      width: 36px; height: 36px;
+      border: 1.5px solid var(--kiwi);
+      z-index: 9998;
+      transition: width 0.3s, height 0.3s, opacity 0.2s;
+      opacity: 0.6;
+    }
+    @media (hover: none) {
+      .cursor, .cursor-ring { display: none; }
+      body { cursor: auto; }
+    }
+
+    /* === NOISE OVERLAY === */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    /* ========== NAV ========== */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem;
+      height: var(--nav-h);
+      z-index: 200;
+      background: rgba(255,255,255,0.97);
+      border-bottom: 1px solid rgba(90,158,16,0.14);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      gap: 1rem;
+    }
+
+    .nav-logo {
+      display: flex; align-items: center; gap: 0.6rem;
+      text-decoration: none; flex-shrink: 0;
+    }
+    .nav-logo-icon {
+      width: 36px; height: 36px;
+      background: var(--kiwi); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: 0 0 16px var(--kiwi-glow-strong);
+    }
+    .nav-logo-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.6rem; letter-spacing: 0.12em; color: var(--white);
+    }
+    .nav-logo-text span { color: var(--kiwi); }
+
+    .nav-links {
+      display: flex; gap: 1.4rem; list-style: none; align-items: center;
+    }
+    .nav-links a {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.66rem; color: var(--grey);
+      text-decoration: none; letter-spacing: 0.1em;
+      text-transform: uppercase; transition: color 0.2s; white-space: nowrap;
+    }
+    .nav-links a:hover { color: var(--kiwi); }
+
+    .nav-ctas {
+      display: flex; gap: 0.45rem; align-items: center; flex-shrink: 0;
+    }
+    .nav-cta {
+      background: var(--kiwi); color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.42rem 0.8rem; border: none; border-radius: 4px;
+      cursor: pointer; transition: background 0.2s, transform 0.15s;
+      text-decoration: none; white-space: nowrap;
+    }
+    .nav-cta:hover { background: var(--kiwi-bright); transform: translateY(-1px); }
+
+    /* Hamburger */
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px;
+      cursor: pointer; padding: 6px; background: none; border: none; z-index: 201;
+    }
+    .hamburger span {
+      display: block; width: 24px; height: 2px;
+      background: var(--kiwi); border-radius: 2px; transition: all 0.3s;
+    }
+    .hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* ========== MOBILE MENU ========== */
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: var(--nav-h); left: 0; right: 0;
+      background: rgba(255,255,255,0.99);
+      z-index: 199;
+      flex-direction: column;
+      padding: 1.5rem 1.5rem 2rem;
+      border-bottom: 2px solid rgba(90,158,16,0.2);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+      transform: translateY(-8px); opacity: 0;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .mobile-menu.open {
+      display: flex; transform: translateY(0);
+      opacity: 1; pointer-events: all;
+    }
+
+    .mobile-nav-links {
+      display: flex; flex-direction: column; gap: 0;
+      border-bottom: 1px solid rgba(90,158,16,0.12);
+      margin-bottom: 1.2rem; padding-bottom: 1.2rem; list-style: none;
+    }
+    .mobile-nav-links a {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--grey);
+      text-decoration: none; padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(90,158,16,0.07);
+      display: flex; align-items: center; justify-content: space-between;
+      transition: color 0.2s;
+    }
+    .mobile-nav-links li:last-child a { border-bottom: none; }
+    .mobile-nav-links a:hover { color: var(--kiwi); }
+    .mobile-nav-links a::after { content: '›'; font-size: 1.1rem; color: var(--kiwi); }
+
+    .mobile-ctas {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;
+    }
+    .mobile-cta-btn {
+      background: var(--kiwi); color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.8rem 0.5rem; border-radius: 6px;
+      text-decoration: none; text-align: center;
+      transition: background 0.2s, transform 0.15s; display: block;
+    }
+    .mobile-cta-btn:hover { background: var(--kiwi-bright); transform: translateY(-1px); }
+    .mobile-cta-btn.outline {
+      background: transparent;
+      border: 1.5px solid var(--kiwi); color: var(--kiwi);
+    }
+    .mobile-cta-btn.outline:hover { background: var(--kiwi-glow); }
+
+    /* ========== HERO ========== */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      position: relative; overflow: hidden;
+      padding: calc(var(--nav-h) + 4rem) 1.5rem 4rem;
+      text-align: center;
+    }
+    .hero-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.08) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+    .hero-glow {
+      position: absolute; top: 30%; left: 50%;
+      transform: translate(-50%,-50%);
+      width: min(700px,100vw); height: 500px;
+      background: radial-gradient(ellipse,rgba(90,158,16,0.10) 0%,transparent 70%);
+      pointer-events: none;
+    }
+    .scanline {
+      position: absolute; width: 100%; height: 2px;
+      background: linear-gradient(90deg,transparent,var(--kiwi),transparent);
+      opacity: 0.2; animation: scanMove 4s ease-in-out infinite; top: 0;
+    }
+    @keyframes scanMove {
+      0%{top:0;opacity:0} 10%{opacity:.25} 90%{opacity:.12} 100%{top:100%;opacity:0}
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(90,158,16,0.08);
+      border: 1px solid rgba(90,158,16,0.3); border-radius: 50px;
+      padding: 0.4rem 1rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--kiwi);
+      margin-bottom: 1.8rem; position: relative; z-index: 1;
+      animation: fadeUp 0.8s ease forwards; opacity: 0;
+    }
+    .hero-badge::before {
+      content: ''; width: 6px; height: 6px;
+      background: var(--kiwi); border-radius: 50%;
+      animation: pulse 1.5s infinite; flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)}
+    }
+
+    .hero-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.5rem, 14vw, 9rem);
+      line-height: 0.92; letter-spacing: 0.02em; color: var(--white);
+      position: relative; z-index: 1;
+      animation: fadeUp 0.8s 0.2s ease forwards; opacity: 0;
+    }
+    .hero-title .accent { color: var(--kiwi); display: block; }
+    .hero-title .outline { -webkit-text-stroke: 2px var(--kiwi); color: transparent; }
+
+    .hero-sub {
+      font-size: clamp(0.85rem,2vw,1.05rem);
+      font-weight: 400; color: var(--grey);
+      max-width: 540px; line-height: 1.75;
+      margin: 1.8rem auto 2.5rem;
+      position: relative; z-index: 1;
+      animation: fadeUp 0.8s 0.4s ease forwards; opacity: 0;
+    }
+
+    .hero-actions {
+      display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+      position: relative; z-index: 1;
+      animation: fadeUp 0.8s 0.6s ease forwards; opacity: 0;
+    }
+
+    .btn-primary {
+      background: var(--kiwi); color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 0.9rem 2rem; border: none; border-radius: 4px;
+      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      transition: all 0.2s; position: relative; overflow: hidden;
+    }
+    .btn-primary::after {
+      content: ''; position: absolute; inset: 0;
+      background: white; opacity: 0; transition: opacity 0.2s;
+    }
+    .btn-primary:hover::after { opacity: 0.15; }
+    .btn-primary:hover { box-shadow: 0 0 30px var(--kiwi-glow-strong); transform: translateY(-2px); }
+
+    .btn-outline {
+      background: transparent; color: var(--kiwi);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 0.9rem 2rem;
+      border: 1.5px solid rgba(90,158,16,0.5); border-radius: 4px;
+      cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--kiwi); background: var(--kiwi-glow); transform: translateY(-2px); }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+
+    .hero-stats {
+      display: flex; gap: 2rem 3rem; flex-wrap: wrap; justify-content: center;
+      margin-top: 4rem; position: relative; z-index: 1;
+      border-top: 1px solid rgba(90,158,16,0.15); padding-top: 2.5rem;
+      animation: fadeUp 0.8s 0.8s ease forwards; opacity: 0; width: 100%;
+    }
+    .stat-item { text-align: center; }
+    .stat-num { font-family:'Bebas Neue',sans-serif; font-size:2.8rem; color:var(--kiwi); line-height:1; }
+    .stat-label {
+      font-family:'Space Mono',monospace; font-size:0.6rem;
+      letter-spacing:.15em; text-transform:uppercase; color:var(--grey); margin-top:.3rem;
+    }
+
+    /* ========== SECTION COMMON ========== */
+    section { position: relative; z-index: 1; }
+    .section-label {
+      font-family:'Space Mono',monospace; font-size:.62rem;
+      letter-spacing:.2em; text-transform:uppercase; color:var(--kiwi); margin-bottom:.8rem;
+    }
+    .section-title {
+      font-family:'Bebas Neue',sans-serif;
+      font-size:clamp(2rem,5vw,3.6rem); line-height:1; letter-spacing:.04em;
+    }
+
+    /* ========== DETECT ========== */
+    .detect {
+      padding: 5rem 1.5rem;
+      max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 4rem; align-items: center;
+    }
+    .camera-frame {
+      background: var(--black-2);
+      border: 1px solid rgba(90,158,16,.25); border-radius: 12px;
+      aspect-ratio: 4/3; display: flex; flex-direction: column;
+      overflow: hidden; position: relative;
+      box-shadow: 0 0 60px rgba(90,158,16,.08);
+    }
+    .camera-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .8rem 1rem; border-bottom: 1px solid rgba(90,158,16,.12);
+      background: rgba(90,158,16,.04); flex-wrap: wrap; gap: .4rem;
+    }
+    .camera-dots { display: flex; gap: 6px; }
+    .camera-dots span { width: 8px; height: 8px; border-radius: 50%; }
+    .camera-dots span:nth-child(1){ background:#ff5f57; }
+    .camera-dots span:nth-child(2){ background:#febc2e; }
+    .camera-dots span:nth-child(3){ background:var(--kiwi); }
+    .camera-label { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.1em; color:var(--kiwi); }
+    .camera-body {
+      flex:1; background:var(--black-3); position:relative;
+      display:flex; align-items:center; justify-content:center; overflow:hidden;
+    }
+    .detection-box {
+      position:absolute; width:38%; height:40%;
+      border:2px solid var(--kiwi); border-radius:4px;
+      top:28%; left:38%; animation:detectBlink 2.5s ease-in-out infinite;
+    }
+    .detection-box::before,.detection-box::after {
+      content:''; position:absolute; width:12px; height:12px;
+    }
+    .detection-box::before {
+      top:-2px; left:-2px;
+      border-top:3px solid var(--kiwi-bright); border-left:3px solid var(--kiwi-bright);
+    }
+    .detection-box::after {
+      bottom:-2px; right:-2px;
+      border-bottom:3px solid var(--kiwi-bright); border-right:3px solid var(--kiwi-bright);
+    }
+    .detection-tag {
+      position:absolute; top:-22px; left:0;
+      background:var(--kiwi); color:#fff;
+      font-family:'Space Mono',monospace; font-size:.52rem; font-weight:700;
+      padding:2px 6px; letter-spacing:.1em;
+    }
+    .detection-confidence {
+      position:absolute; bottom:-20px; left:0;
+      font-family:'Space Mono',monospace; font-size:.52rem; color:var(--kiwi);
+    }
+    @keyframes detectBlink { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .scan-h,.scan-v {
+      position:absolute; background:linear-gradient(transparent,var(--kiwi),transparent); opacity:.1;
+    }
+    .scan-h { width:100%; height:2px; animation:scanH 3s ease-in-out infinite; }
+    .scan-v { width:2px; height:100%; animation:scanV 3s 1.5s ease-in-out infinite; }
+    @keyframes scanH{ 0%{top:0} 100%{top:100%} }
+    @keyframes scanV{ 0%{left:0} 100%{left:100%} }
+    .camera-live {
+      position:absolute; top:.8rem; right:.8rem;
+      display:flex; align-items:center; gap:5px;
+      font-family:'Space Mono',monospace; font-size:.55rem; color:#ff4444; letter-spacing:.1em;
+    }
+    .live-dot { width:6px; height:6px; background:#ff4444; border-radius:50%; animation:pulse 1s infinite; }
+    .grid-overlay {
+      position:absolute; inset:0;
+      background-image:
+        linear-gradient(rgba(90,158,16,.06) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(90,158,16,.06) 1px,transparent 1px);
+      background-size:30px 30px;
+    }
+    .animal-silhouette {
+      font-size:clamp(2.5rem,6vw,4rem); opacity:.2; filter:grayscale(1); position:relative; z-index:1;
+    }
+    .camera-footer {
+      padding:.65rem 1rem; border-top:1px solid rgba(90,158,16,.12);
+      display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.3rem;
+    }
+    .data-stream {
+      font-family:'Space Mono',monospace; font-size:.52rem; color:var(--kiwi); opacity:.6;
+    }
+    .detect-content .section-title { margin-bottom:1.2rem; }
+    .detect-content p { color:var(--grey); line-height:1.8; margin-bottom:2rem; font-size:.93rem; }
+    .animal-tags { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:2rem; }
+    .animal-tag {
+      background:rgba(90,158,16,.08); border:1px solid rgba(90,158,16,.25); color:var(--kiwi);
+      font-family:'Space Mono',monospace; font-size:.62rem; letter-spacing:.06em;
+      padding:.38rem .75rem; border-radius:4px;
+    }
+
+    /* ========== FEATURES ========== */
+    .features {
+      padding:5rem 1.5rem;
+      background:var(--black-2);
+      border-top:1px solid rgba(90,158,16,.1); border-bottom:1px solid rgba(90,158,16,.1);
+    }
+    .features-inner { max-width:1200px; margin:0 auto; }
+    .features-header { text-align:center; margin-bottom:3.5rem; }
+    .features-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));
+      gap:1.2rem;
+    }
+    .feature-card {
+      background:var(--black); border:1px solid rgba(90,158,16,.14); border-radius:10px;
+      padding:1.8rem; position:relative; overflow:hidden;
+      transition:border-color .3s,transform .3s,box-shadow .3s;
+    }
+    .feature-card::before {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(135deg,var(--kiwi-glow),transparent);
+      opacity:0; transition:opacity .3s;
+    }
+    .feature-card:hover { border-color:rgba(90,158,16,.4); transform:translateY(-4px); box-shadow:0 12px 40px rgba(90,158,16,.1); }
+    .feature-card:hover::before { opacity:1; }
+    .feature-icon {
+      width:46px; height:46px; background:rgba(90,158,16,.1);
+      border:1px solid rgba(90,158,16,.25); border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.3rem; margin-bottom:1.2rem; position:relative; z-index:1;
+    }
+    .feature-name { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; margin-bottom:.5rem; position:relative; z-index:1; }
+    .feature-desc { font-size:.83rem; color:var(--grey); line-height:1.7; position:relative; z-index:1; }
+
+    /* ========== HOW ========== */
+    .how { padding:6rem 1.5rem; max-width:1000px; margin:0 auto; text-align:center; }
+    .how-header { margin-bottom:4rem; }
+    .steps {
+      position:relative; display:grid; grid-template-columns:repeat(4,1fr); gap:1.5rem;
+    }
+    .steps::before {
+      content:''; position:absolute;
+      top:28px; left:12.5%; right:12.5%; height:1px;
+      background:linear-gradient(90deg,var(--kiwi-dim),var(--kiwi),var(--kiwi-dim)); opacity:.3;
+    }
+    .step { display:flex; flex-direction:column; align-items:center; gap:1rem; }
+    .step-num {
+      width:56px; height:56px; background:var(--black-2);
+      border:2px solid var(--kiwi); border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Bebas Neue',sans-serif; font-size:1.4rem; color:var(--kiwi);
+      position:relative; z-index:1; box-shadow:0 0 20px var(--kiwi-glow); flex-shrink:0;
+    }
+    .step-title { font-weight:700; font-size:.9rem; margin-bottom:.3rem; }
+    .step-desc { font-size:.78rem; color:var(--grey); line-height:1.6; }
+
+    /* ========== MODULES ========== */
+    .modules {
+      padding:5rem 1.5rem; background:var(--black-2);
+      border-top:1px solid rgba(90,158,16,.1);
+    }
+    .modules-inner { max-width:1200px; margin:0 auto; }
+    .modules-header { text-align:center; margin-bottom:3.5rem; }
+    .modules-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1.2rem; }
+    .module-card {
+      background:var(--black); border:1px solid rgba(90,158,16,.14); border-radius:12px;
+      padding:1.8rem 2rem; display:flex; gap:1.2rem; align-items:flex-start;
+      transition:border-color .3s,transform .3s;
+    }
+    .module-card:hover { border-color:rgba(90,158,16,.35); transform:translateY(-3px); }
+    .module-icon {
+      font-size:1.8rem; flex-shrink:0; width:50px; height:50px;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(90,158,16,.08); border-radius:10px; border:1px solid rgba(90,158,16,.18);
+    }
+    .module-title { font-family:'Syne',sans-serif; font-weight:800; font-size:.95rem; color:var(--kiwi); margin-bottom:.75rem; }
+    .module-list { list-style:none; display:flex; flex-direction:column; gap:.4rem; }
+    .module-list li { font-size:.8rem; color:var(--grey); display:flex; align-items:center; gap:.5rem; }
+    .module-list li::before { content:'›'; color:var(--kiwi); font-size:1rem; flex-shrink:0; }
+
+    /* ========== ALERT DEMO ========== */
+    .alert-demo { padding:5rem 1.5rem; max-width:1200px; margin:0 auto; }
+    .alert-demo-inner { display:grid; grid-template-columns:1fr 1fr; gap:4rem; align-items:center; }
+    .alert-demo-content .section-title { margin-bottom:1rem; }
+    .alert-demo-content p { color:var(--grey); line-height:1.8; margin-bottom:1.5rem; font-size:.93rem; }
+    .sos-demo { display:flex; flex-direction:column; align-items:center; gap:2rem; }
+    .sos-button {
+      width:150px; height:150px; border-radius:50%;
+      background:linear-gradient(135deg,#c0392b,#8b0000);
+      border:3px solid rgba(255,60,60,.5);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      cursor:pointer; font-family:'Bebas Neue',sans-serif;
+      font-size:2rem; letter-spacing:.1em; color:white;
+      box-shadow:0 0 0 8px rgba(255,60,60,.08),0 0 0 16px rgba(255,60,60,.04);
+      transition:transform .2s,box-shadow .2s; position:relative; overflow:hidden;
+    }
+    .sos-button:hover {
+      transform:scale(1.05);
+      box-shadow:0 0 0 12px rgba(255,60,60,.12),0 0 0 24px rgba(255,60,60,.06),0 0 40px rgba(255,60,60,.3);
+    }
+    .sos-button .sos-label { font-size:.55rem; font-family:'Space Mono',monospace; opacity:.7; letter-spacing:.15em; }
+    .sos-ring {
+      position:absolute; inset:-8px; border-radius:50%;
+      border:2px solid rgba(255,60,60,.3); animation:sosRing 2s ease-in-out infinite;
+    }
+    @keyframes sosRing { 0%{transform:scale(1);opacity:.5} 100%{transform:scale(1.3);opacity:0} }
+    .alert-card {
+      background:var(--black-2); border:1px solid rgba(90,158,16,.2); border-radius:10px;
+      padding:1.2rem; width:100%; max-width:300px;
+    }
+    .alert-card-header { display:flex; align-items:center; gap:.6rem; margin-bottom:.8rem; }
+    .alert-type {
+      font-family:'Space Mono',monospace; font-size:.58rem; font-weight:700;
+      letter-spacing:.1em; color:#fff; background:var(--kiwi); padding:2px 8px; border-radius:3px;
+    }
+    .alert-time { font-family:'Space Mono',monospace; font-size:.58rem; color:var(--grey); margin-left:auto; }
+    .alert-animal { font-weight:700; font-size:1rem; margin-bottom:.3rem; }
+    .alert-loc { font-family:'Space Mono',monospace; font-size:.62rem; color:var(--grey); }
+
+    /* ========== CTA ========== */
+    .cta-section { padding:6rem 1.5rem; text-align:center; position:relative; overflow:hidden; }
+    .cta-section::before {
+      content:''; position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%); width:600px; height:400px;
+      background:radial-gradient(ellipse,rgba(90,158,16,.1) 0%,transparent 65%); pointer-events:none;
+    }
+    .cta-section .section-title { margin-bottom:1.2rem; }
+    .cta-section p { color:var(--grey); max-width:480px; margin:0 auto 2.5rem; line-height:1.8; }
+
+    /* ========== FOOTER ========== */
+    footer {
+      background:var(--black-2); border-top:1px solid rgba(90,158,16,.12);
+      padding:2.5rem 1.5rem; text-align:center;
+    }
+    .footer-logo { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:.12em; color:var(--kiwi); margin-bottom:.6rem; }
+    .footer-copy { font-family:'Space Mono',monospace; font-size:.58rem; letter-spacing:.1em; color:var(--grey); line-height:1.7; }
+
+    /* ========== SCROLL REVEAL ========== */
+    .reveal { opacity:0; transform:translateY(30px); transition:opacity .7s ease,transform .7s ease; }
+    .reveal.visible { opacity:1; transform:none; }
+
+    /* ========== RESPONSIVE ========== */
+
+    /* Large tablets — compress nav */
+    @media (max-width:1100px) {
+      .nav-links { gap:1.1rem; }
+      .nav-links a { font-size:.6rem; }
+      .nav-cta { font-size:.58rem; padding:.4rem .7rem; }
+    }
+
+    /* Tablets — hide nav, show hamburger */
+    @media (max-width:860px) {
+      .nav-links { display:none; }
+      .nav-ctas { display:none; }
+      .hamburger { display:flex; }
+
+      .detect { grid-template-columns:1fr; gap:2.5rem; padding:4rem 1.5rem; }
+      .detect-visual { order:-1; max-width:480px; margin:0 auto; width:100%; }
+
+      .steps { grid-template-columns:repeat(2,1fr); gap:2rem; }
+      .steps::before { display:none; }
+
+      .modules-grid { grid-template-columns:1fr; }
+
+      .alert-demo-inner { grid-template-columns:1fr; gap:3rem; }
+      .alert-demo-content { text-align:center; }
+      .sos-demo { align-items:center; }
+      .alert-card { margin:0 auto; }
+    }
+
+    @media (max-width:600px) {
+      nav { padding:0 1rem; }
+      .nav-logo-text { font-size:1.4rem; }
+
+      .hero { padding:calc(var(--nav-h) + 2.5rem) 1rem 3rem; }
+      .hero-stats { gap:1.5rem 2rem; }
+      .stat-num { font-size:2.2rem; }
+
+      .detect,.alert-demo { padding:3.5rem 1rem; }
+      .features,.modules { padding:3.5rem 1rem; }
+      .how { padding:4rem 1rem; }
+      .cta-section { padding:4rem 1rem; }
+
+      .features-grid { grid-template-columns:1fr; }
+
+      .btn-primary,.btn-outline { font-size:.7rem; padding:.8rem 1.5rem; }
+      .sos-button { width:130px; height:130px; font-size:1.8rem; }
+
+      .mobile-ctas { grid-template-columns:1fr 1fr; }
+    }
+
+    @media (max-width:440px) {
+      .hero-title .outline { -webkit-text-stroke:1.5px var(--kiwi); }
+      .hero-actions { gap:.8rem; }
+      .hero-actions a { flex:1; justify-content:center; min-width:130px; }
+
+      .steps { grid-template-columns:1fr; gap:1.5rem; }
+      .step { flex-direction:row; align-items:flex-start; text-align:left; gap:1rem; }
+      .step-num { flex-shrink:0; }
+
+      .module-card { flex-direction:column; }
+
+      .mobile-ctas { grid-template-columns:1fr 1fr; }
+      .camera-label { font-size:.5rem; }
+    }
+
+    @media (max-width:360px) {
+      .nav-logo-text { font-size:1.25rem; }
+      .nav-logo-icon { width:30px; height:30px; font-size:1rem; }
+      .mobile-ctas { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Custom Cursor -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- ========== MOBILE MENU ========== -->
+<div class="mobile-menu" id="mobileMenu">
+  <ul class="mobile-nav-links">
+    <li><a href="#detect" onclick="closeMobileMenu()">Detect</a></li>
+    <li><a href="#features" onclick="closeMobileMenu()">Features</a></li>
+    <li><a href="#how" onclick="closeMobileMenu()">How It Works</a></li>
+    <li><a href="#alert" onclick="closeMobileMenu()">Alert</a></li>
+  </ul>
+  <div class="mobile-ctas">
+    <a href="/user_login/" class="mobile-cta-btn" onclick="closeMobileMenu()">⚡ User</a>
+    <a href="/officer_login/" class="mobile-cta-btn" onclick="closeMobileMenu()">🌲 Forest</a>
+    <a href="/wildlife_login/" class="mobile-cta-btn outline" onclick="closeMobileMenu()">🐾 Wildlife</a>
+    <a href="/admin_login/" class="mobile-cta-btn outline" onclick="closeMobileMenu()">🛡️ Admin</a>
+  </div>
+</div>
+
+<!-- ========== NAV ========== -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">🐾</div>
+    <div class="nav-logo-text">WILD<span>GUARD</span></div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#detect">Detect</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#alert">Alert</a></li>
+  </ul>
+  <div class="nav-ctas">
+    <a href="/user_login/" class="nav-cta">User →</a>
+    <a href="/officer_login/" class="nav-cta">Forest →</a>
+    <a href="/wildlife_login/" class="nav-cta">Wildlife →</a>
+    <a href="/admin_login/" class="nav-cta">Admin →</a>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ========== HERO ========== -->
+<section class="hero" id="home">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="scanline"></div>
+  <div class="hero-badge">Real-Time Wildlife Detection Active</div>
+  <h1 class="hero-title">
+    <span>WILD</span>
+    <span class="accent">GUARD</span>
+    <span class="outline">SYSTEM</span>
+  </h1>
+  <p class="hero-sub">
+    AI-powered wildlife detection and alert system protecting communities near forest zones through real-time camera monitoring and instant emergency reporting.
+  </p>
+  <div class="hero-actions">
+    <a href="/user_login/" class="btn-primary">⚡ Launch Detection</a>
+    <a href="#features" class="btn-outline">Learn More ↓</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat-item">
+      <div class="stat-num" data-target="5">0</div>
+      <div class="stat-label">Species Detected</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">24/7</div>
+      <div class="stat-label">Monitoring Active</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">&lt;2s</div>
+      <div class="stat-label">Alert Response</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== DETECTION ========== -->
+<section class="detect" id="detect">
+  <div class="detect-visual reveal">
+    <div class="camera-frame">
+      <div class="camera-topbar">
+        <div class="camera-dots"><span></span><span></span><span></span></div>
+        <span class="camera-label">WILDGUARD CAM — LIVE FEED</span>
+        <span class="camera-label">●</span>
+      </div>
+      <div class="camera-body">
+        <div class="grid-overlay"></div>
+        <div class="scan-h"></div>
+        <div class="scan-v"></div>
+        <div class="animal-silhouette">🐘</div>
+        <div class="detection-box">
+          <span class="detection-tag">ELEPHANT</span>
+          <span class="detection-confidence">CONF: 97.3%</span>
+        </div>
+        <div class="camera-live"><span class="live-dot"></span> LIVE</div>
+      </div>
+      <div class="camera-footer">
+        <span class="data-stream">PROCESSING FRAME #4821...</span>
+        <span class="camera-label">ML MODEL v2.1</span>
+      </div>
+    </div>
+  </div>
+  <div class="detect-content reveal">
+    <div class="section-label">// Real-Time Detection</div>
+    <h2 class="section-title">AI-POWERED ANIMAL RECOGNITION</h2>
+    <p>Wild Guard uses a trained machine learning model to analyze live webcam footage frame-by-frame. When a wild animal is detected, the system immediately captures, logs, and alerts all relevant parties — in under 2 seconds.</p>
+    <div class="animal-tags">
+      <span class="animal-tag">🐘 Elephant</span>
+      <span class="animal-tag">🐯 Tiger</span>
+      <span class="animal-tag">🦁 Lion</span>
+      <span class="animal-tag">🐻 Bear</span>
+      <span class="animal-tag">🐗 Wild Boar</span>
+    </div>
+    <a href="/user_login/" class="btn-primary">View Detection Logs</a>
+  </div>
+</section>
+
+<!-- ========== FEATURES ========== -->
+<section class="features" id="features">
+  <div class="features-inner">
+    <div class="features-header reveal">
+      <div class="section-label">// Core Capabilities</div>
+      <h2 class="section-title">EVERYTHING YOU NEED<br>TO STAY SAFE</h2>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon">📡</div>
+        <div class="feature-name">Live Webcam Monitoring</div>
+        <p class="feature-desc">Continuous video feed processing using ML to detect and identify wild animals in real-time, 24 hours a day.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🗺️</div>
+        <div class="feature-name">Danger Zone Mapping</div>
+        <p class="feature-desc">Interactive map displaying detected animal locations and high-risk wildlife zones for informed navigation.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🚨</div>
+        <div class="feature-name">SOS Emergency Reporting</div>
+        <p class="feature-desc">One-tap emergency reports sent instantly to the forest department and wildlife protection teams with location data.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">✅</div>
+        <div class="feature-name">Alert Verification</div>
+        <p class="feature-desc">Forest officers review and verify detection alerts before dispatching field teams, ensuring accuracy and fast response.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">📢</div>
+        <div class="feature-name">Instant Notifications</div>
+        <p class="feature-desc">Push alerts to all users near detected animal zones, giving advance warning to prevent human-wildlife conflicts.</p>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🛡️</div>
+        <div class="feature-name">Wildlife Safety Tips</div>
+        <p class="feature-desc">Curated safety guidelines and protocols managed by admins to educate communities living near forest areas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== HOW IT WORKS ========== -->
+<section class="how" id="how">
+  <div class="how-header reveal">
+    <div class="section-label">// System Workflow</div>
+    <h2 class="section-title">HOW WILD GUARD WORKS</h2>
+  </div>
+  <div class="steps">
+    <div class="step reveal">
+      <div class="step-num">01</div>
+      <div><div class="step-title">Camera Captures</div><p class="step-desc">Webcam continuously streams live video from the environment around the clock.</p></div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">02</div>
+      <div><div class="step-title">AI Detects</div><p class="step-desc">ML model processes each frame, identifies animal species with confidence scoring.</p></div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">03</div>
+      <div><div class="step-title">Alert Generated</div><p class="step-desc">Detection logged, image captured, and alert pushed to dashboard and field officers.</p></div>
+    </div>
+    <div class="step reveal">
+      <div class="step-num">04</div>
+      <div><div class="step-title">Response Deployed</div><p class="step-desc">Verified alerts trigger wildlife protection teams for immediate field action.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== MODULES ========== -->
+<section class="modules" id="modules">
+  <div class="modules-inner">
+    <div class="modules-header reveal">
+      <div class="section-label">// System Modules</div>
+      <h2 class="section-title">BUILT FOR EVERY ROLE</h2>
+    </div>
+    <div class="modules-grid">
+      <div class="module-card reveal">
+        <div class="module-icon">👤</div>
+        <div>
+          <div class="module-title">User Portal</div>
+          <ul class="module-list">
+            <li>View live detection alerts</li>
+            <li>Submit SOS emergency report</li>
+            <li>Browse danger zone map</li>
+            <li>Access wildlife safety tips</li>
+          </ul>
+        </div>
+      </div>
+      <div class="module-card reveal">
+        <div class="module-icon">🌲</div>
+        <div>
+          <div class="module-title">Forest Officer Dashboard</div>
+          <ul class="module-list">
+            <li>Review & verify AI detections</li>
+            <li>Manage field team deployment</li>
+            <li>Monitor SOS reports</li>
+            <li>Update zone risk levels</li>
+          </ul>
+        </div>
+      </div>
+      <div class="module-card reveal">
+        <div class="module-icon">🐾</div>
+        <div>
+          <div class="module-title">Wildlife Protection Team</div>
+          <ul class="module-list">
+            <li>Receive verified animal alerts</li>
+            <li>Track animal movement history</li>
+            <li>Coordinate rescue operations</li>
+            <li>Log field observations</li>
+          </ul>
+        </div>
+      </div>
+      <div class="module-card reveal">
+        <div class="module-icon">🛡️</div>
+        <div>
+          <div class="module-title">Admin Control Panel</div>
+          <ul class="module-list">
+            <li>Manage all user accounts</li>
+            <li>Configure ML detection model</li>
+            <li>Publish safety guidelines</li>
+            <li>System analytics & reports</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== ALERT DEMO ========== -->
+<section class="alert-demo" id="alert">
+  <div class="alert-demo-inner">
+    <div class="alert-demo-content reveal">
+      <div class="section-label">// Emergency Response</div>
+      <h2 class="section-title">INSTANT SOS REPORTING SYSTEM</h2>
+      <p>When you encounter a wild animal, every second matters. Wild Guard's SOS system instantly transmits your location, situation, and contact details to both forest officers and wildlife protection teams.</p>
+      <p>No delays, no complicated forms — one button connects you to the people who can help.</p>
+      <a href="/user_login/" class="btn-primary">🚨 Learn About SOS</a>
+    </div>
+    <div class="sos-demo reveal">
+      <button class="sos-button">
+        <div class="sos-ring"></div>
+        SOS
+        <span class="sos-label">PRESS IN EMERGENCY</span>
+      </button>
+      <div class="alert-card">
+        <div class="alert-card-header">
+          <span class="alert-type">⚡ ALERT</span>
+          <span class="alert-time">NOW — 14:32</span>
+        </div>
+        <div class="alert-animal">🐯 Tiger Detected</div>
+        <div class="alert-loc">📍 Forest Zone 7, Sector B — 0.4 km from your location</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CTA ========== -->
+<section class="cta-section">
+  <div class="reveal">
+    <div class="section-label">// Get Protected Today</div>
+    <h2 class="section-title">STAY ONE STEP AHEAD<br>OF THE WILD</h2>
+    <p>Join Wild Guard and help build a safer boundary between human settlements and wildlife. Early detection saves lives — both human and animal.</p>
+    <div class="hero-actions">
+      <a href="/user_login/" class="btn-primary">⚡ Get Started Free</a>
+      <a href="/user_login/" class="btn-outline">Report an Incident</a>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <div class="footer-logo">WILD GUARD</div>
+  <div class="footer-copy">© 2025 Wild Guard · Wildlife Detection & Alert System<br>Protecting Humans & Wildlife</div>
+</footer>
+
+<script>
+  // ── Custom Cursor (desktop only) ──
+  const cursor = document.getElementById('cursor');
+  const ring = document.getElementById('cursorRing');
+  let mx=0, my=0, rx=0, ry=0;
+  if (window.matchMedia('(hover: hover)').matches) {
+    document.addEventListener('mousemove', e => {
+      mx=e.clientX; my=e.clientY;
+      cursor.style.left=mx+'px'; cursor.style.top=my+'px';
+    });
+    (function animateRing(){
+      rx+=(mx-rx)*0.12; ry+=(my-ry)*0.12;
+      ring.style.left=rx+'px'; ring.style.top=ry+'px';
+      requestAnimationFrame(animateRing);
+    })();
+    document.querySelectorAll('a,button').forEach(el => {
+      el.addEventListener('mouseenter',()=>{ cursor.style.width='20px'; cursor.style.height='20px'; ring.style.width='54px'; ring.style.height='54px'; });
+      el.addEventListener('mouseleave',()=>{ cursor.style.width='12px'; cursor.style.height='12px'; ring.style.width='36px'; ring.style.height='36px'; });
+    });
+  }
+
+  // ── Mobile Menu ──
+  const hamburger = document.getElementById('hamburger');
+  const mobileMenu = document.getElementById('mobileMenu');
+  let menuOpen = false;
+
+  function openMenu(){
+    menuOpen=true;
+    mobileMenu.classList.add('open');
+    hamburger.classList.add('open');
+    document.body.style.overflow='hidden';
+  }
+  function closeMobileMenu(){
+    menuOpen=false;
+    mobileMenu.classList.remove('open');
+    hamburger.classList.remove('open');
+    document.body.style.overflow='';
+  }
+  hamburger.addEventListener('click', ()=>{ menuOpen ? closeMobileMenu() : openMenu(); });
+  document.addEventListener('click', e=>{
+    if(menuOpen && !mobileMenu.contains(e.target) && !hamburger.contains(e.target)) closeMobileMenu();
+  });
+
+  // ── Scroll Reveal ──
+  const reveals = document.querySelectorAll('.reveal');
+  const ro = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ setTimeout(()=>e.target.classList.add('visible'),80); ro.unobserve(e.target); } });
+  },{ threshold:0.1, rootMargin:'0px 0px -30px 0px' });
+  reveals.forEach(el=>ro.observe(el));
+
+  // ── Counter ──
+  const counters = document.querySelectorAll('[data-target]');
+  const co = new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        const el=entry.target, target=+el.getAttribute('data-target');
+        let count=0; const step=target/30;
+        const iv=setInterval(()=>{ count=Math.min(count+step,target); el.textContent=Math.ceil(count); if(count>=target)clearInterval(iv); },40);
+        co.unobserve(el);
+      }
+    });
+  },{ threshold:0.5 });
+  counters.forEach(el=>co.observe(el));
+
+  // ── Cycling detection ──
+  const animals=['🐘','🐯','🦁','🐻','🐗'];
+  const tags=['ELEPHANT','TIGER','LION','BEAR','WILD BOAR'];
+  const confs=['97.3%','94.1%','89.6%','91.8%','87.4%'];
+  let idx=0;
+  setInterval(()=>{
+    idx=(idx+1)%animals.length;
+    const sil=document.querySelector('.animal-silhouette');
+    const tag=document.querySelector('.detection-tag');
+    const conf=document.querySelector('.detection-confidence');
+    if(sil) sil.textContent=animals[idx];
+    if(tag) tag.textContent=tags[idx];
+    if(conf) conf.textContent='CONF: '+confs[idx];
+  },3000);
+</script>
+</body>
+</html>

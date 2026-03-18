@@ -1,0 +1,535 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Wildlife Team Sign In</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --black:            #ffffff;
+      --black-2:          #f3f8ee;
+      --black-3:          #e8f2df;
+      --kiwi:             #5a9e10;
+      --kiwi-bright:      #6dba18;
+      --kiwi-dim:         #3d7008;
+      --kiwi-glow:        rgba(90,158,16,0.15);
+      --kiwi-glow-strong: rgba(90,158,16,0.30);
+      --white:            #1a2e0e;
+      --grey:             #5a7a4a;
+      --red:              #e05555;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    .page-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.07) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove {
+      0%   { transform: translateY(0); }
+      100% { transform: translateY(48px); }
+    }
+
+    .page-glow {
+      position: fixed;
+      top: 40%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 700px; height: 500px;
+      background: radial-gradient(ellipse, rgba(90,158,16,0.08) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .scanline {
+      position: fixed; width: 100%; height: 2px; top: 0;
+      background: linear-gradient(90deg, transparent, var(--kiwi), transparent);
+      opacity: 0.18; z-index: 0;
+      animation: scanMove 6s ease-in-out infinite;
+    }
+    @keyframes scanMove {
+      0%   { top: 0;    opacity: 0; }
+      10%  { opacity: 0.22; }
+      90%  { opacity: 0.10; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 2.5rem;
+      z-index: 100;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.97) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(90,158,16,0.12);
+      backdrop-filter: blur(8px);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 0.6rem;
+      text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 34px; height: 34px;
+      background: var(--kiwi); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 0 16px var(--kiwi-glow-strong);
+    }
+    .nav-logo-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem; letter-spacing: 0.12em; color: var(--white);
+    }
+    .nav-logo-text span { color: var(--kiwi); }
+    .nav-back {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--grey); text-decoration: none; transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--kiwi); }
+
+    /* ── SPLIT LAYOUT ── */
+    .page {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* ── LEFT PANEL ── */
+    .left-panel {
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: flex-start;
+      padding: 8rem 4rem 4rem 5rem;
+      position: relative; overflow: hidden;
+    }
+    .left-panel::after {
+      content: '';
+      position: absolute; top: 0; right: 0; bottom: 0; width: 1px;
+      background: linear-gradient(to bottom, transparent, rgba(90,158,16,0.25), transparent);
+    }
+
+    .deco-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(4rem, 9vw, 8rem);
+      line-height: 0.88; letter-spacing: 0.02em;
+      user-select: none; pointer-events: none;
+    }
+    .deco-text .solid   { color: var(--white); display: block; }
+    .deco-text .accent  { color: var(--kiwi);  display: block; }
+    .deco-text .outline {
+      -webkit-text-stroke: 2px rgba(90,158,16,0.35);
+      color: transparent; display: block;
+    }
+
+    .left-tagline {
+      margin-top: 2rem;
+      font-size: 0.9rem; color: var(--grey);
+      line-height: 1.8; max-width: 340px;
+    }
+
+    .left-stats {
+      display: flex; flex-wrap: wrap; gap: 0.8rem;
+      margin-top: 2.5rem;
+    }
+    .stat-pill {
+      background: rgba(90,158,16,0.08);
+      border: 1px solid rgba(90,158,16,0.22);
+      border-radius: 50px;
+      padding: 0.4rem 1rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--kiwi);
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .stat-pill::before {
+      content: '●'; font-size: 0.45rem;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    .team-float {
+      position: absolute; bottom: 3rem; left: 5rem;
+      display: flex; gap: 0.6rem; flex-wrap: wrap;
+    }
+    .team-chip {
+      background: var(--black-2);
+      border: 1px solid rgba(90,158,16,0.18);
+      border-radius: 6px;
+      padding: 0.35rem 0.7rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem; letter-spacing: 0.08em;
+      color: var(--grey);
+    }
+
+    /* ── RIGHT PANEL ── */
+    .right-panel {
+      display: flex; align-items: center; justify-content: center;
+      padding: 8rem 3.5rem 4rem;
+      background: rgba(243,248,238,0.6);
+    }
+
+    /* ── CARD ── */
+    .card {
+      width: 100%; max-width: 420px;
+      background: var(--black-2);
+      border: 1px solid rgba(90,158,16,0.18);
+      border-radius: 16px;
+      padding: 2.6rem 2.4rem 2.2rem;
+      box-shadow: 0 0 80px rgba(90,158,16,0.08), 0 0 0 1px rgba(90,158,16,0.06);
+      animation: fadeUp 0.7s ease forwards;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--kiwi); margin-bottom: 0.5rem;
+    }
+    .card-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2rem, 4vw, 2.6rem);
+      letter-spacing: 0.04em; line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .card-sub {
+      font-size: 0.82rem; color: var(--grey); line-height: 1.6;
+      margin-bottom: 1.8rem;
+    }
+
+    .messages { list-style: none; margin-bottom: 1.4rem; }
+    .messages li {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem; letter-spacing: 0.05em;
+      padding: 0.7rem 1rem; border-radius: 6px;
+      margin-bottom: 0.5rem;
+      display: flex; align-items: flex-start; gap: 0.5rem;
+    }
+    .messages li.error {
+      background: rgba(224,85,85,0.08);
+      border: 1px solid rgba(224,85,85,0.28);
+      color: #c0392b;
+    }
+    .messages li.success {
+      background: rgba(90,158,16,0.08);
+      border: 1px solid rgba(90,158,16,0.28);
+      color: var(--kiwi);
+    }
+    .msg-icon { flex-shrink: 0; margin-top: 1px; }
+
+    .form-group { display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1.1rem; }
+
+    label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--grey);
+    }
+    label .req { color: var(--kiwi); margin-left: 2px; }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      background: var(--black-3);
+      border: 1px solid rgba(90,158,16,0.18);
+      border-radius: 7px;
+      padding: 0.8rem 1rem;
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.92rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      appearance: none; -webkit-appearance: none;
+    }
+    input:focus {
+      border-color: var(--kiwi);
+      box-shadow: 0 0 0 3px rgba(90,158,16,0.12);
+    }
+    input.error-field { border-color: rgba(224,85,85,0.5); }
+    input::placeholder { color: var(--grey); opacity: 0.7; }
+
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 3rem; }
+    .pw-toggle {
+      position: absolute; right: 0.9rem; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      color: var(--grey); cursor: pointer; font-size: 1rem;
+      line-height: 1; padding: 0; z-index: 1;
+      transition: color 0.2s;
+    }
+    .pw-toggle:hover { color: var(--kiwi); }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--kiwi);
+      color: #ffffff;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 1rem;
+      border: none; border-radius: 7px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+      position: relative; overflow: hidden;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    }
+    .btn-submit::after {
+      content: ''; position: absolute; inset: 0;
+      background: white; opacity: 0; transition: opacity 0.2s;
+    }
+    .btn-submit:hover::after { opacity: 0.12; }
+    .btn-submit:hover {
+      box-shadow: 0 0 30px var(--kiwi-glow-strong);
+      transform: translateY(-2px);
+    }
+    .btn-submit:active { transform: translateY(0); }
+    .btn-submit.loading { opacity: 0.7; pointer-events: none; }
+
+    .spinner {
+      display: none; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #ffffff; border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .or-divider {
+      display: flex; align-items: center; gap: 1rem;
+      margin: 1.4rem 0;
+    }
+    .or-divider::before, .or-divider::after {
+      content: ''; flex: 1;
+      height: 1px; background: rgba(90,158,16,0.15);
+    }
+    .or-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--grey);
+    }
+
+    .register-row {
+      text-align: center; margin-top: 1.2rem;
+      font-size: 0.82rem; color: var(--grey);
+    }
+    .register-row a {
+      color: var(--kiwi); text-decoration: none;
+      transition: color 0.2s; font-weight: 600;
+    }
+    .register-row a:hover { color: var(--kiwi-bright); }
+
+    .security-badge {
+      display: flex; align-items: center; gap: 0.5rem;
+      justify-content: center; margin-top: 1.4rem;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--grey); opacity: 0.6;
+    }
+    .security-badge::before { content: '🔒'; font-size: 0.7rem; opacity: 0.7; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .page { grid-template-columns: 1fr; }
+      .left-panel { display: none; }
+      .right-panel {
+        padding: 7rem 1.5rem 3rem;
+        background: transparent;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      .card { max-width: 480px; }
+    }
+    @media (max-width: 520px) {
+      nav { padding: 1rem 1.2rem; }
+      .right-panel { padding: 6.5rem 1rem 2.5rem; }
+      .card { padding: 2rem 1.3rem 1.8rem; border-radius: 12px; }
+    }
+    @media (max-width: 360px) {
+      nav { padding: 1rem; }
+      .nav-logo-text { font-size: 1.2rem; }
+      .card { padding: 1.6rem 1rem 1.5rem; }
+      .card-title { font-size: 1.8rem; }
+      .btn-submit { font-size: 0.72rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+<div class="page-glow"></div>
+<div class="scanline"></div>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">🐾</div>
+    <div class="nav-logo-text">WILD<span>GUARD</span></div>
+  </a>
+  <a href="/" class="nav-back">← Back</a>
+</nav>
+
+<div class="page">
+
+  <!-- LEFT DECORATIVE PANEL -->
+  <div class="left-panel">
+    <div class="deco-text">
+      <span class="solid">WILDLIFE</span>
+      <span class="accent">TEAM</span>
+      <span class="outline">PORTAL</span>
+    </div>
+
+    <p class="left-tagline">
+      Dedicated portal for Wildlife Protection Teams. Coordinate rapid response missions, track wildlife incidents, and communicate with field officers in real time.
+    </p>
+
+    <div class="left-stats">
+      <div class="stat-pill">Rapid Response</div>
+      <div class="stat-pill">Incident Tracking</div>
+      <div class="stat-pill">Field Dispatch</div>
+    </div>
+
+    <div class="team-float">
+      <span class="team-chip">🦁 Rescue Teams</span>
+      <span class="team-chip">🚐 Mobile Units</span>
+      <span class="team-chip">📡 Field Ops</span>
+    </div>
+  </div>
+
+  <!-- RIGHT FORM PANEL -->
+  <div class="right-panel">
+    <div class="card">
+
+      <div class="card-label">// Wildlife Team Secure Sign In</div>
+      <h1 class="card-title">TEAM LOGIN</h1>
+      <p class="card-sub">Sign in to your Wildlife Protection Team account to access missions and live alerts.</p>
+
+      {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li class="{{ message.tags }}">
+            <span class="msg-icon">{% if message.tags == 'error' %}⚠{% else %}✔{% endif %}</span>
+            {{ message }}
+          </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      <form method="POST" action="{% url 'wildlife_login' %}" novalidate id="loginForm">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label for="contact_email">Contact Email <span class="req">*</span></label>
+          <input type="email" id="contact_email" name="contact_email"
+                 placeholder="team@wildlifedept.gov"
+                 value="{{ form_data.contact_email|default:'' }}"
+                 autocomplete="email" required/>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password <span class="req">*</span></label>
+          <div class="pw-wrap">
+            <input type="password" id="password" name="password"
+                   placeholder="Enter your password"
+                   autocomplete="current-password" required/>
+            <button type="button" class="pw-toggle" id="pwToggle"
+                    aria-label="Toggle password visibility">👁</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span class="spinner" id="spinner"></span>
+          <span id="btnText">🦁 Team Sign In</span>
+        </button>
+
+      </form>
+
+      <div class="or-divider">
+        <span class="or-text">New Team?</span>
+      </div>
+
+      <div class="register-row">
+        Don't have an account? <a href="{% url 'wildlife_register' %}">Register here →</a>
+      </div>
+
+      <div class="security-badge">
+        Secured Wildlife Team Portal
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ── PASSWORD SHOW / HIDE ── */
+  const pwInput  = document.getElementById('password');
+  const pwToggle = document.getElementById('pwToggle');
+
+  pwToggle.addEventListener('click', () => {
+    const isText = pwInput.type === 'text';
+    pwInput.type = isText ? 'password' : 'text';
+    pwToggle.textContent = isText ? '👁' : '🙈';
+  });
+
+  /* ── SUBMIT LOADING STATE ── */
+  const form      = document.getElementById('loginForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const spinner   = document.getElementById('spinner');
+  const btnText   = document.getElementById('btnText');
+
+  form.addEventListener('submit', (e) => {
+    const email = document.getElementById('contact_email').value.trim();
+    const pw    = pwInput.value;
+
+    if (!email || !pw) {
+      e.preventDefault();
+      highlightEmpty(email, 'contact_email');
+      highlightEmpty(pw, 'password');
+      return;
+    }
+
+    submitBtn.classList.add('loading');
+    spinner.style.display = 'block';
+    btnText.textContent   = 'Signing in…';
+  });
+
+  function highlightEmpty(val, id) {
+    if (!val) {
+      const el = document.getElementById(id);
+      el.classList.add('error-field');
+      el.addEventListener('input', () => el.classList.remove('error-field'), { once: true });
+    }
+  }
+
+  document.getElementById('contact_email').addEventListener('focus', function () {
+    this.classList.remove('error-field');
+  });
+  pwInput.addEventListener('focus', function () {
+    this.classList.remove('error-field');
+  });
+</script>
+</body>
+</html>

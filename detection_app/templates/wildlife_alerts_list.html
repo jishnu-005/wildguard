@@ -1,0 +1,811 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Wildlife Alerts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    :root {
+      --black:            #ffffff;
+      --black-2:          #f3f8ee;
+      --black-3:          #e8f2df;
+      --black-4:          #ddecd0;
+      --kiwi:             #5a9e10;
+      --kiwi-bright:      #6dba18;
+      --kiwi-dim:         #3d7008;
+      --kiwi-glow:        rgba(90,158,16,0.15);
+      --kiwi-glow-strong: rgba(90,158,16,0.30);
+      --white:            #1a2e0e;
+      --grey:             #5a7a4a;
+      --red:              #e05555;
+      --amber:            #d97706;
+      --blue:             #2563eb;
+      --sidebar-w:        260px;
+      --topbar-h:         62px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--black); color: var(--white); font-family: 'Syne', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    .page-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+    @keyframes fadeUp   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes radarSpin { to{transform:rotate(360deg)} }
+    @keyframes radarPing { 0%{transform:scale(1);opacity:0.7} 100%{transform:scale(2.8);opacity:0} }
+    @keyframes scanBar  { 0%{left:-100%;opacity:0} 10%{opacity:0.4} 90%{opacity:0.2} 100%{left:100%;opacity:0} }
+    @keyframes confFill { from{width:0} }
+    @keyframes slideDown{ from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ══ SIDEBAR ══ */
+    .sidebar {
+      position: fixed; top:0; left:0; bottom:0; width: var(--sidebar-w);
+      background: rgba(243,248,238,0.97); border-right: 1px solid rgba(90,158,16,0.15);
+      display: flex; flex-direction: column; z-index: 200; backdrop-filter: blur(12px);
+      transition: transform 0.3s ease;
+    }
+    .sidebar-logo { display:flex; align-items:center; gap:0.65rem; padding:1.4rem 1.4rem 1.2rem; border-bottom:1px solid rgba(90,158,16,0.12); text-decoration:none; flex-shrink:0; }
+    .sidebar-logo-icon { width:36px; height:36px; background:var(--kiwi); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; box-shadow:0 0 16px var(--kiwi-glow-strong); flex-shrink:0; }
+    .sidebar-logo-text { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.12em; color:var(--white); line-height:1; }
+    .sidebar-logo-text span { color:var(--kiwi); }
+    .sidebar-logo-sub { font-family:'Space Mono',monospace; font-size:0.48rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); margin-top:1px; }
+
+    .user-badge { margin:1rem 1.2rem 0.8rem; background:rgba(90,158,16,0.07); border:1px solid rgba(90,158,16,0.18); border-radius:10px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.7rem; flex-shrink:0; }
+    .user-avatar { width:40px; height:40px; border-radius:50%; background:var(--black-3); border:2px solid rgba(90,158,16,0.3); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; overflow:hidden; }
+    .user-avatar img { width:100%; height:100%; object-fit:cover; }
+    .user-name { font-weight:700; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .user-role { font-family:'Space Mono',monospace; font-size:0.54rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--kiwi); margin-top:1px; }
+    .user-id-tag { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.08em; color:var(--grey); margin-top:2px; }
+    .user-dot { width:8px; height:8px; border-radius:50%; background:var(--kiwi); margin-left:auto; flex-shrink:0; animation:pulse 2s infinite; box-shadow:0 0 6px var(--kiwi); }
+
+    .sidebar-nav { flex:1; overflow-y:auto; padding:0.6rem 0.8rem; scrollbar-width:thin; scrollbar-color:rgba(90,158,16,0.2) transparent; }
+    .nav-section-label { font-family:'Space Mono',monospace; font-size:0.52rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--grey); padding:0.8rem 0.6rem 0.4rem; opacity:0.7; }
+    .nav-item { display:flex; align-items:center; gap:0.7rem; padding:0.62rem 0.9rem; border-radius:8px; text-decoration:none; color:var(--grey); font-size:0.84rem; font-weight:600; transition:background 0.2s,color 0.2s; margin-bottom:2px; }
+    .nav-item:hover { background:rgba(90,158,16,0.08); color:var(--white); }
+    .nav-item.active { background:rgba(90,158,16,0.12); color:var(--kiwi); border-left:3px solid var(--kiwi); }
+    .nav-icon { font-size:1rem; flex-shrink:0; width:20px; text-align:center; }
+
+    .sidebar-footer { padding:0.8rem; border-top:1px solid rgba(90,158,16,0.12); flex-shrink:0; }
+    .btn-logout { width:100%; display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.9rem; background:rgba(224,85,85,0.06); border:1px solid rgba(224,85,85,0.2); border-radius:8px; color:var(--red); font-family:'Space Mono',monospace; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; text-decoration:none; transition:background 0.2s,border-color 0.2s; }
+    .btn-logout:hover { background:rgba(224,85,85,0.12); border-color:rgba(224,85,85,0.4); }
+
+    /* ══ TOPBAR ══ */
+    .topbar { position:fixed; top:0; left:var(--sidebar-w); right:0; height:var(--topbar-h); background:rgba(255,255,255,0.95); border-bottom:1px solid rgba(90,158,16,0.12); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; padding:0 2rem; z-index:150; transition:left 0.3s; }
+    .topbar-left { display:flex; align-items:center; gap:0.8rem; }
+    .topbar-page-label { font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); }
+    .topbar-page-title { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.06em; color:var(--white); }
+    .topbar-sep { width:1px; height:24px; background:rgba(90,158,16,0.2); }
+    .topbar-right { display:flex; align-items:center; gap:1rem; }
+    .topbar-time { font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; color:var(--grey); }
+    .topbar-alert-dot { width:10px; height:10px; border-radius:50%; background:var(--kiwi); animation:pulse 1.5s infinite; box-shadow:0 0 8px var(--kiwi); }
+    .topbar-alert-dot.red   { background:var(--red);   box-shadow:0 0 8px rgba(224,85,85,0.5); }
+    .topbar-alert-dot.amber { background:var(--amber); box-shadow:0 0 8px rgba(217,119,6,0.5); }
+    .hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:4px; background:none; border:none; }
+    .hamburger span { display:block; width:22px; height:2px; background:var(--kiwi); border-radius:2px; transition:all 0.3s; }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.6); backdrop-filter:blur(2px); z-index:190; }
+    .sidebar-overlay.open { display:block; }
+    .scanline-bar { position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--kiwi),transparent); opacity:0; animation:scanBar 8s ease-in-out infinite; }
+
+    /* ══ MAIN ══ */
+    .main { margin-left:var(--sidebar-w); padding-top:var(--topbar-h); min-height:100vh; position:relative; z-index:1; transition:margin-left 0.3s; }
+    .content { padding:2rem 2rem 3rem; max-width:1400px; }
+
+    /* ══ PAGE BANNER ══ */
+    .page-banner {
+      position: relative;
+      background: linear-gradient(135deg, var(--kiwi) 0%, var(--kiwi-dim) 100%);
+      border-radius: 16px; padding: 1.8rem 2rem; margin-bottom: 1.8rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+      overflow: hidden;
+      animation: fadeUp 0.4s ease forwards;
+    }
+    .page-banner::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .page-banner::after { content:'🔔'; position:absolute; right:2rem; top:50%; transform:translateY(-50%); font-size:7rem; opacity:0.08; pointer-events:none; }
+    .banner-left { position:relative; z-index:1; flex:1; }
+    .banner-eyebrow { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; color:rgba(255,255,255,0.7); margin-bottom:0.35rem; }
+    .banner-heading { font-family:'Bebas Neue',sans-serif; font-size:clamp(1.6rem,3vw,2.4rem); letter-spacing:0.06em; color:#fff; line-height:1; margin-bottom:0.4rem; }
+    .banner-sub { font-size:0.82rem; color:rgba(255,255,255,0.75); line-height:1.5; }
+    .banner-chips { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.9rem; }
+    .banner-chip { display:inline-flex; align-items:center; gap:0.4rem; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); border-radius:20px; padding:0.28rem 0.8rem; font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.06em; color:#fff; white-space:nowrap; }
+    .banner-chip.danger { background:rgba(224,85,85,0.35); border-color:rgba(224,85,85,0.6); }
+    .banner-chip.warn   { background:rgba(217,119,6,0.3);  border-color:rgba(217,119,6,0.5); }
+
+    /* Radar */
+    .radar-wrap { position:relative; z-index:1; flex-shrink:0; width:96px; height:96px; }
+    .radar-ring { position:absolute; inset:0; border-radius:50%; border:1.5px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; }
+    .radar-ring::before { content:''; position:absolute; inset:12px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.18); }
+    .radar-ring::after  { content:''; position:absolute; inset:24px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.12); }
+    .radar-sweep { position:absolute; inset:0; border-radius:50%; background:conic-gradient(from 0deg,transparent 75%,rgba(255,255,255,0.22) 100%); animation:radarSpin 3s linear infinite; }
+    .radar-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:8px; height:8px; border-radius:50%; background:#fff; box-shadow:0 0 10px rgba(255,255,255,0.6); }
+    .radar-ping { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.4); animation:radarPing 2s ease-out infinite; }
+
+    /* ══ STATS STRIP ══ */
+    .stats-strip {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem;
+      margin-bottom: 1.8rem;
+      animation: fadeUp 0.45s ease forwards; opacity:0; animation-delay:0.05s;
+    }
+    .stat-card {
+      background: var(--black-2); border: 1px solid rgba(90,158,16,0.15);
+      border-radius: 12px; padding: 1.1rem 1.2rem;
+      display: flex; align-items: center; gap: 0.85rem;
+      position: relative; overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(90,158,16,0.1); border-color:rgba(90,158,16,0.3); }
+    .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:12px 12px 0 0; }
+    .stat-card.s-total::before { background:var(--kiwi); }
+    .stat-card.s-high::before  { background:var(--red); }
+    .stat-card.s-mid::before   { background:var(--amber); }
+    .stat-card.s-low::before   { background:var(--blue); }
+    .stat-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+    .stat-card.s-total .stat-icon { background:rgba(90,158,16,0.1); border:1px solid rgba(90,158,16,0.2); }
+    .stat-card.s-high  .stat-icon { background:rgba(224,85,85,0.1); border:1px solid rgba(224,85,85,0.2); }
+    .stat-card.s-mid   .stat-icon { background:rgba(217,119,6,0.1); border:1px solid rgba(217,119,6,0.2); }
+    .stat-card.s-low   .stat-icon { background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2); }
+    .stat-num { font-family:'Bebas Neue',sans-serif; font-size:1.7rem; letter-spacing:0.04em; line-height:1; }
+    .stat-card.s-total .stat-num { color:var(--kiwi); }
+    .stat-card.s-high  .stat-num { color:var(--red); }
+    .stat-card.s-mid   .stat-num { color:var(--amber); }
+    .stat-card.s-low   .stat-num { color:var(--blue); }
+    .stat-label { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--grey); margin-top:2px; }
+
+    /* ══ TOOLBAR ══ */
+    .toolbar { display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap; margin-bottom:1.2rem; animation:fadeUp 0.5s ease forwards; opacity:0; animation-delay:0.1s; }
+    .search-wrap { flex:1; min-width:200px; position:relative; }
+    .search-icon { position:absolute; left:0.9rem; top:50%; transform:translateY(-50%); color:var(--grey); font-size:0.85rem; pointer-events:none; }
+    .search-input { width:100%; padding:0.65rem 2.6rem 0.65rem 2.4rem; background:var(--black-2); border:1px solid rgba(90,158,16,0.2); border-radius:10px; color:var(--white); font-family:'Syne',sans-serif; font-size:0.88rem; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+    .search-input::placeholder { color:var(--grey); }
+    .search-input:focus { border-color:rgba(90,158,16,0.5); box-shadow:0 0 0 3px rgba(90,158,16,0.08); }
+    .search-clear { position:absolute; right:0.75rem; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--grey); cursor:pointer; font-size:0.82rem; padding:0.2rem; display:none; transition:color 0.15s; }
+    .search-clear:hover { color:var(--red); }
+    .search-clear.show { display:block; }
+    .toolbar-right { display:flex; align-items:center; gap:0.65rem; flex-shrink:0; flex-wrap:wrap; }
+    .tb-btn { display:inline-flex; align-items:center; gap:0.45rem; padding:0.62rem 1.1rem; border-radius:10px; font-family:'Space Mono',monospace; font-size:0.6rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; white-space:nowrap; transition:background 0.15s,transform 0.15s,border-color 0.15s; text-decoration:none; border:1px solid; }
+    .tb-btn.green { background:rgba(90,158,16,0.1); border-color:rgba(90,158,16,0.3); color:var(--kiwi); }
+    .tb-btn.green:hover { background:rgba(90,158,16,0.18); transform:translateY(-1px); }
+    .tb-btn.blue  { background:rgba(37,99,235,0.08); border-color:rgba(37,99,235,0.3); color:var(--blue); }
+    .tb-btn.blue:hover  { background:rgba(37,99,235,0.15); transform:translateY(-1px); }
+
+    /* ══ CONFIDENCE FILTER ══ */
+    .conf-filter { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.2rem; animation:slideDown 0.2s ease forwards; }
+    .cf-label { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--grey); margin-right:0.25rem; }
+    .cf-btn { font-family:'Space Mono',monospace; font-size:0.56rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.35rem 0.85rem; border-radius:20px; border:1px solid rgba(90,158,16,0.2); background:var(--black-2); color:var(--grey); cursor:pointer; text-decoration:none; transition:all 0.15s; white-space:nowrap; }
+    .cf-btn:hover { border-color:rgba(90,158,16,0.4); color:var(--white); }
+    .cf-btn.active        { background:rgba(90,158,16,0.12); border-color:rgba(90,158,16,0.4); color:var(--kiwi); }
+    .cf-btn.red.active    { background:rgba(224,85,85,0.1); border-color:rgba(224,85,85,0.35); color:var(--red); }
+    .cf-btn.amber.active  { background:rgba(217,119,6,0.1); border-color:rgba(217,119,6,0.35); color:var(--amber); }
+    .cf-btn.blue-f.active { background:rgba(37,99,235,0.08); border-color:rgba(37,99,235,0.35); color:var(--blue); }
+    .cf-spacer { flex:1; }
+    .result-count { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.08em; color:var(--grey); }
+    .result-count strong { color:var(--kiwi); }
+
+    /* ══ SEARCH INFO BAR ══ */
+    .search-info { display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem; font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.08em; color:var(--grey); animation:slideDown 0.2s ease forwards; }
+    .search-info strong { color:var(--kiwi); }
+    .search-info-clear { color:var(--red); text-decoration:none; }
+    .search-info-clear:hover { text-decoration:underline; }
+
+    /* ══ SECTION HEADER ══ */
+    .section-hd { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .section-hd-left { display:flex; align-items:center; gap:0.65rem; }
+    .section-bar { width:4px; height:18px; background:var(--kiwi); border-radius:4px; }
+    .section-title { font-weight:700; font-size:1rem; }
+    .section-meta { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.12em; color:var(--grey); text-transform:uppercase; }
+
+    /* ══ ALERTS GRID ══ */
+    .alerts-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(310px,1fr)); gap:1.1rem; }
+
+    .alert-card {
+      background: var(--black-2); border: 1px solid rgba(90,158,16,0.15);
+      border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      animation: fadeUp 0.5s ease forwards; opacity: 0;
+    }
+    .alert-card:hover { transform:translateY(-3px); box-shadow:0 10px 28px rgba(90,158,16,0.13); border-color:rgba(90,158,16,0.3); }
+
+    /* Top accent bar by confidence */
+    .card-accent { height:3px; }
+    .alert-card.conf-high .card-accent { background:var(--red); }
+    .alert-card.conf-mid  .card-accent { background:var(--amber); }
+    .alert-card.conf-low  .card-accent { background:var(--kiwi); }
+
+    /* Image */
+    .card-img-wrap { position:relative; height:155px; overflow:hidden; background:var(--black-3); flex-shrink:0; }
+    .card-img-wrap img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.35s ease; }
+    .alert-card:hover .card-img-wrap img { transform:scale(1.05); }
+    .card-img-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:3rem; color:var(--grey); opacity:0.3; background:linear-gradient(135deg,var(--black-3),var(--black-4)); }
+    .card-img-overlay { position:absolute; inset:0; background:linear-gradient(to bottom,transparent 40%,rgba(26,46,14,0.5) 100%); pointer-events:none; }
+    .card-img-badges { position:absolute; top:0.7rem; left:0.7rem; right:0.7rem; display:flex; justify-content:space-between; align-items:flex-start; }
+    .conf-badge { font-family:'Space Mono',monospace; font-size:0.53rem; font-weight:700; letter-spacing:0.09em; padding:3px 8px; border-radius:6px; backdrop-filter:blur(10px); }
+    .conf-badge.high { background:rgba(224,85,85,0.85); color:#fff; border:1px solid rgba(224,85,85,0.4); }
+    .conf-badge.mid  { background:rgba(217,119,6,0.85);  color:#fff; border:1px solid rgba(217,119,6,0.4); }
+    .conf-badge.low  { background:rgba(90,158,16,0.8);   color:#fff; border:1px solid rgba(90,158,16,0.4); }
+    .dist-badge { font-family:'Space Mono',monospace; font-size:0.53rem; font-weight:700; letter-spacing:0.08em; padding:3px 8px; border-radius:6px; background:rgba(255,255,255,0.88); color:var(--white); border:1px solid rgba(255,255,255,0.4); backdrop-filter:blur(10px); display:flex; align-items:center; gap:0.25rem; }
+
+    /* Card body */
+    .card-body { padding:1.1rem 1.2rem; flex:1; }
+    .card-animal-row { display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.25rem; }
+    .card-animal-name { font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:0.05em; color:var(--white); line-height:1; }
+    .pill { display:inline-flex; align-items:center; gap:2px; font-family:'Space Mono',monospace; font-size:0.52rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+    .pill::before { content:'●'; font-size:0.4rem; }
+    .pill.red    { background:rgba(224,85,85,0.1);   color:var(--red);   border:1px solid rgba(224,85,85,0.25); }
+    .pill.amber  { background:rgba(217,119,6,0.1);   color:var(--amber); border:1px solid rgba(217,119,6,0.25); }
+    .pill.green  { background:rgba(90,158,16,0.1);   color:var(--kiwi);  border:1px solid rgba(90,158,16,0.25); }
+    .pill.blue   { background:rgba(37,99,235,0.08);  color:var(--blue);  border:1px solid rgba(37,99,235,0.25); }
+    .card-time { font-family:'Space Mono',monospace; font-size:0.54rem; letter-spacing:0.06em; color:var(--grey); margin-bottom:0.7rem; display:flex; align-items:center; gap:0.35rem; }
+    .card-location { display:flex; align-items:center; gap:0.4rem; padding:0.45rem 0.65rem; background:var(--black-3); border:1px solid rgba(90,158,16,0.12); border-radius:7px; margin-bottom:0.8rem; font-size:0.74rem; color:var(--grey); }
+    .card-location-icon { font-size:0.78rem; flex-shrink:0; }
+    .card-location-text { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* Confidence bar */
+    .conf-bar-wrap { margin-bottom:0.3rem; }
+    .conf-bar-label { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+    .conf-bar-text { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--grey); }
+    .conf-bar-pct { font-family:'Space Mono',monospace; font-size:0.56rem; font-weight:700; }
+    .conf-bar-pct.high { color:var(--red); }
+    .conf-bar-pct.mid  { color:var(--amber); }
+    .conf-bar-pct.low  { color:var(--kiwi); }
+    .conf-bar-track { height:4px; background:rgba(90,158,16,0.1); border-radius:10px; overflow:hidden; }
+    .conf-bar-fill { height:100%; border-radius:10px; animation:confFill 1s ease forwards; }
+    .conf-bar-fill.high { background:linear-gradient(90deg,var(--amber),var(--red)); }
+    .conf-bar-fill.mid  { background:linear-gradient(90deg,var(--kiwi),var(--amber)); }
+    .conf-bar-fill.low  { background:var(--kiwi); }
+
+    /* Card footer */
+    .card-footer { display:flex; align-items:center; justify-content:space-between; gap:0.65rem; padding:0.8rem 1.2rem; border-top:1px solid rgba(90,158,16,0.1); background:rgba(90,158,16,0.02); }
+    .card-id { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.1em; color:var(--grey); }
+    .view-map-btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.42rem 0.85rem; background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.25); border-radius:7px; color:var(--blue); font-family:'Space Mono',monospace; font-size:0.54rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:background 0.15s,transform 0.15s; }
+    .view-map-btn:hover { background:rgba(37,99,235,0.15); transform:scale(1.03); }
+
+    /* ══ EMPTY STATE ══ */
+    .empty-state { grid-column:1/-1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:4rem 2rem; text-align:center; animation:fadeUp 0.5s ease forwards; }
+    .empty-icon  { font-size:3.5rem; margin-bottom:1rem; opacity:0.35; }
+    .empty-title { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:0.08em; color:var(--grey); margin-bottom:0.5rem; }
+    .empty-sub   { font-size:0.82rem; color:var(--grey); line-height:1.6; max-width:340px; }
+    .empty-link  { margin-top:1.2rem; display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.3rem; background:rgba(90,158,16,0.1); border:1px solid rgba(90,158,16,0.3); border-radius:9px; color:var(--kiwi); font-family:'Space Mono',monospace; font-size:0.62rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; text-decoration:none; transition:background 0.15s; }
+    .empty-link:hover { background:rgba(90,158,16,0.18); }
+
+    /* ══ MAP MODAL ══ */
+    .modal-backdrop { display:none; position:fixed; inset:0; z-index:300; background:rgba(26,46,14,0.65); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:1rem; }
+    .modal-backdrop.open { display:flex; animation:fadeUp 0.2s ease forwards; }
+    .modal { background:var(--black); border:1px solid rgba(90,158,16,0.25); border-radius:16px; overflow:hidden; width:100%; max-width:760px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 24px 60px rgba(90,158,16,0.15); }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 1.5rem; border-bottom:1px solid rgba(90,158,16,0.12); flex-shrink:0; background:rgba(243,248,238,0.5); }
+    .modal-title { font-family:'Bebas Neue',sans-serif; font-size:1.15rem; letter-spacing:0.07em; color:var(--white); }
+    .modal-close { width:32px; height:32px; border-radius:7px; background:var(--black-3); border:1px solid rgba(90,158,16,0.15); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.9rem; color:var(--grey); transition:background 0.15s,color 0.15s; }
+    .modal-close:hover { background:var(--black-4); color:var(--white); }
+    .modal-body { flex:1; overflow:auto; padding:1.4rem; }
+    .modal-map-frame { width:100%; height:360px; border-radius:10px; overflow:hidden; border:1px solid rgba(90,158,16,0.15); background:var(--black-3); }
+    .modal-map-frame iframe { width:100%; height:100%; border:none; display:block; }
+    .modal-map-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:0.6rem; font-family:'Space Mono',monospace; font-size:0.7rem; letter-spacing:0.1em; color:var(--grey); }
+    .modal-info { margin-top:1rem; display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; }
+    .modal-info-item { background:var(--black-3); border:1px solid rgba(90,158,16,0.12); border-radius:9px; padding:0.75rem 0.9rem; }
+    .modal-info-label { font-family:'Space Mono',monospace; font-size:0.48rem; letter-spacing:0.14em; color:var(--grey); text-transform:uppercase; margin-bottom:3px; }
+    .modal-info-value { font-size:0.82rem; font-weight:700; color:var(--white); }
+
+    /* ══ RESPONSIVE ══ */
+    @media (max-width:1100px) { .stats-strip { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:1024px) { :root { --sidebar-w:220px; } .content { padding:1.5rem 1.5rem 3rem; } }
+    @media (max-width:900px)  { .alerts-grid { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:768px) {
+      :root { --sidebar-w:260px; }
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); box-shadow:4px 0 30px rgba(90,158,16,0.15); }
+      .topbar { left:0; }
+      .hamburger { display:flex; }
+      .main { margin-left:0; }
+      .content { padding:1.2rem 1rem 3rem; }
+      .radar-wrap { display:none; }
+      .page-banner { flex-direction:column; align-items:flex-start; }
+      .toolbar-right { width:100%; }
+      .tb-btn { flex:1; justify-content:center; }
+      .modal-info { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:600px) {
+      .alerts-grid { grid-template-columns:1fr; }
+      .stats-strip { grid-template-columns:1fr 1fr; }
+    }
+    @media (max-width:480px) {
+      .topbar-time { display:none; }
+      .conf-filter { gap:0.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <a href="{% url 'wildlife_home' %}" class="sidebar-logo">
+    <div class="sidebar-logo-icon">🐾</div>
+    <div>
+      <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+      <div class="sidebar-logo-sub">Wildlife Portal</div>
+    </div>
+  </a>
+
+  <div class="user-badge">
+    <div class="user-avatar">
+      {% if team.profile_image %}<img src="{{ team.profile_image.url }}" alt="{{ team.team_name }}"/>{% else %}🌿{% endif %}
+    </div>
+    <div>
+      <div class="user-name">{{ team.team_name|default:"Wildlife Team" }}</div>
+      <div class="user-role">{{ team.leader_name|default:"Team Leader" }}</div>
+      <div class="user-id-tag">{{ team.team_id|default:"—" }}</div>
+    </div>
+    <div class="user-dot"></div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-item" href="{% url 'wildlife_home' %}"><span class="nav-icon">📊</span>Dashboard</a>
+
+    <div class="nav-section-label">Alerts</div>
+    <a class="nav-item active" href="{% url 'wildlife_alerts_list' %}"><span class="nav-icon">🔔</span>Wildlife Alerts</a>
+    <a class="nav-item" href="{% url 'wildlife_sos_report_list' %}"><span class="nav-icon">🚨</span>Emergency SOS Reports</a>
+
+    <div class="nav-section-label">Tasks & Field</div>
+    <a class="nav-item" href="{% url 'wildlife_danger_zone' %}"><span class="nav-icon">⚠️</span>Danger Zones</a>
+
+    <div class="nav-section-label">My Account</div>
+    <a class="nav-item" href="{% url 'wildlife_profile' %}"><span class="nav-icon">👤</span>My Profile</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="{% url 'logout' %}" class="btn-logout"><span>⏏</span> Log Out</a>
+  </div>
+</aside>
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-sep"></div>
+    <div>
+      <div class="topbar-page-label">// Wildlife Portal · Detection Feed</div>
+      <div class="topbar-page-title">WILDLIFE ALERTS</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-time" id="liveClock"></div>
+    {% if high_conf %}<div class="topbar-alert-dot red"></div>{% endif %}
+    {% if mid_conf  %}<div class="topbar-alert-dot amber"></div>{% endif %}
+    <div class="topbar-alert-dot"></div>
+  </div>
+  <div class="scanline-bar"></div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+<div class="content">
+
+  <!-- PAGE BANNER -->
+  <div class="page-banner">
+    <div class="banner-left">
+      <div class="banner-eyebrow">// Wildlife Detection Feed · 10km Team Radius</div>
+      <div class="banner-heading">Wildlife Alerts</div>
+      <div class="banner-sub">Live detections within 10 km of your team station, sorted by proximity.</div>
+      <div class="banner-chips">
+        <span class="banner-chip">📍 {{ team.location_address|default:"Team Station" }}</span>
+        <span class="banner-chip">📡 10km Radius Active</span>
+        {% if total_nearby %}
+          <span class="banner-chip danger">🔴 {{ total_nearby }} Alert{{ total_nearby|pluralize }}</span>
+        {% endif %}
+        {% if high_conf %}
+          <span class="banner-chip danger">⚠ {{ high_conf }} Critical</span>
+        {% endif %}
+        {% if search_query %}
+          <span class="banner-chip warn">🔍 "{{ search_query }}"</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="radar-wrap">
+      <div class="radar-ring">
+        <div class="radar-sweep"></div>
+        <div class="radar-center"></div>
+        <div class="radar-ping"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div class="stats-strip">
+    <div class="stat-card s-total">
+      <div class="stat-icon">🔔</div>
+      <div>
+        <div class="stat-num">{{ total_nearby }}</div>
+        <div class="stat-label">Nearby Alerts</div>
+      </div>
+    </div>
+    <div class="stat-card s-high">
+      <div class="stat-icon">🚨</div>
+      <div>
+        <div class="stat-num">{{ high_conf }}</div>
+        <div class="stat-label">High Confidence</div>
+      </div>
+    </div>
+    <div class="stat-card s-mid">
+      <div class="stat-icon">⚡</div>
+      <div>
+        <div class="stat-num">{{ mid_conf }}</div>
+        <div class="stat-label">Mid Confidence</div>
+      </div>
+    </div>
+    <div class="stat-card s-low">
+      <div class="stat-icon">📡</div>
+      <div>
+        <div class="stat-num">{{ low_conf }}</div>
+        <div class="stat-label">Low Confidence</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <form method="GET" action="" id="searchForm">
+    <input type="hidden" name="conf" value="{{ filter_confidence }}"/>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+        <input
+          type="text" name="q" id="searchInput" class="search-input"
+          placeholder="Search by animal name… e.g. Elephant, Tiger, Leopard"
+          value="{{ search_query }}" autocomplete="off"
+        />
+        <button type="button" class="search-clear {% if search_query %}show{% endif %}" id="searchClear">✕</button>
+      </div>
+      <div class="toolbar-right">
+        <button type="submit" class="tb-btn green"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+        <button type="button" class="tb-btn blue" id="viewAllMapBtn"><i class="fa-solid fa-map-location-dot"></i> View on Map</button>
+      </div>
+    </div>
+  </form>
+
+  <!-- CONFIDENCE FILTER -->
+  <div class="conf-filter">
+    <span class="cf-label">Filter:</span>
+    <a href="?q={{ search_query }}&conf=all"   class="cf-btn {% if filter_confidence == 'all'  %}active{% endif %}">All</a>
+    <a href="?q={{ search_query }}&conf=high"  class="cf-btn red   {% if filter_confidence == 'high' %}active{% endif %}">⚠ High (≥75%)</a>
+    <a href="?q={{ search_query }}&conf=mid"   class="cf-btn amber {% if filter_confidence == 'mid'  %}active{% endif %}">~ Mid (45–74%)</a>
+    <a href="?q={{ search_query }}&conf=low"   class="cf-btn blue-f {% if filter_confidence == 'low'  %}active{% endif %}">○ Low (&lt;45%)</a>
+    <div class="cf-spacer"></div>
+    <div class="result-count">Showing <strong>{{ total_nearby }}</strong> detection{{ total_nearby|pluralize }}</div>
+  </div>
+
+  {% if search_query %}
+  <div class="search-info">
+    Results for <strong>"{{ search_query }}"</strong> — {{ total_nearby }} alert{{ total_nearby|pluralize }} found &nbsp;
+    <a href="{% url 'wildlife_alerts_list' %}" class="search-info-clear">✕ Clear search</a>
+  </div>
+  {% endif %}
+
+  <!-- SECTION HEADER -->
+  <div class="section-hd">
+    <div class="section-hd-left">
+      <div class="section-bar"></div>
+      <div class="section-title">{% if search_query %}Search Results{% else %}Nearby Detections{% endif %}</div>
+      <div class="section-meta">— 10km team zone</div>
+    </div>
+  </div>
+
+  <!-- ALERTS GRID -->
+  <div class="alerts-grid">
+
+    {% for item in nearby_alerts %}
+    {% with d=item.detection dist=item.distance %}
+
+    {% if d.confidence >= 75 %}
+    <div class="alert-card conf-high" style="animation-delay:{{ forloop.counter0 }}00ms;">
+      <div class="card-accent"></div>
+      <div class="card-img-wrap">
+        {% if d.animal_image %}
+          <img src="{{ d.animal_image.url }}" alt="{{ d.animal_name }}" loading="lazy"/>
+          <div class="card-img-overlay"></div>
+        {% else %}
+          <div class="card-img-placeholder">🦁</div>
+        {% endif %}
+        <div class="card-img-badges">
+          <span class="conf-badge high">HIGH · {{ d.confidence|floatformat:0 }}%</span>
+          {% if dist is not None %}<span class="dist-badge">📍 {{ dist }} km</span>{% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-animal-row">
+          <div class="card-animal-name">{{ d.animal_name }}</div>
+          <span class="pill red">Critical</span>
+        </div>
+        <div class="card-time">🕐 {{ d.detected_at|date:"d M Y, H:i" }}</div>
+        {% if d.location_address %}
+          <div class="card-location"><span class="card-location-icon">📍</span><span class="card-location-text">{{ d.location_address }}</span></div>
+        {% elif d.latitude %}
+          <div class="card-location"><span class="card-location-icon">📍</span><span class="card-location-text">{{ d.latitude }}, {{ d.longitude }}</span></div>
+        {% endif %}
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-label">
+            <span class="conf-bar-text">Detection Confidence</span>
+            <span class="conf-bar-pct high">{{ d.confidence|floatformat:1 }}%</span>
+          </div>
+          <div class="conf-bar-track"><div class="conf-bar-fill high" style="width:{{ d.confidence|floatformat:0 }}%;"></div></div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="card-id">#DET-{{ d.id|stringformat:"04d" }}</span>
+        <button class="view-map-btn" onclick="openMapModal('{{ d.animal_name }}',{{ d.latitude|default:'null' }},{{ d.longitude|default:'null' }},'{{ dist|default:"N/A" }}','{{ d.confidence|floatformat:1 }}','{{ d.detected_at|date:"d M Y, H:i" }}')">
+          <i class="fa-solid fa-map-location-dot"></i> View on Map
+        </button>
+      </div>
+    </div>
+
+    {% elif d.confidence >= 45 %}
+    <div class="alert-card conf-mid" style="animation-delay:{{ forloop.counter0 }}00ms;">
+      <div class="card-accent"></div>
+      <div class="card-img-wrap">
+        {% if d.animal_image %}
+          <img src="{{ d.animal_image.url }}" alt="{{ d.animal_name }}" loading="lazy"/>
+          <div class="card-img-overlay"></div>
+        {% else %}
+          <div class="card-img-placeholder">🐾</div>
+        {% endif %}
+        <div class="card-img-badges">
+          <span class="conf-badge mid">MID · {{ d.confidence|floatformat:0 }}%</span>
+          {% if dist is not None %}<span class="dist-badge">📍 {{ dist }} km</span>{% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-animal-row">
+          <div class="card-animal-name">{{ d.animal_name }}</div>
+          <span class="pill amber">Medium</span>
+        </div>
+        <div class="card-time">🕐 {{ d.detected_at|date:"d M Y, H:i" }}</div>
+        {% if d.location_address %}
+          <div class="card-location"><span class="card-location-icon">📍</span><span class="card-location-text">{{ d.location_address }}</span></div>
+        {% elif d.latitude %}
+          <div class="card-location"><span class="card-location-icon">📍</span><span class="card-location-text">{{ d.latitude }}, {{ d.longitude }}</span></div>
+        {% endif %}
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-label">
+            <span class="conf-bar-text">Detection Confidence</span>
+            <span class="conf-bar-pct mid">{{ d.confidence|floatformat:1 }}%</span>
+          </div>
+          <div class="conf-bar-track"><div class="conf-bar-fill mid" style="width:{{ d.confidence|floatformat:0 }}%;"></div></div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="card-id">#DET-{{ d.id|stringformat:"04d" }}</span>
+        <button class="view-map-btn" onclick="openMapModal('{{ d.animal_name }}',{{ d.latitude|default:'null' }},{{ d.longitude|default:'null' }},'{{ dist|default:"N/A" }}','{{ d.confidence|floatformat:1 }}','{{ d.detected_at|date:"d M Y, H:i" }}')">
+          <i class="fa-solid fa-map-location-dot"></i> View on Map
+        </button>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="alert-card conf-low" style="animation-delay:{{ forloop.counter0 }}00ms;">
+      <div class="card-accent"></div>
+      <div class="card-img-wrap">
+        {% if d.animal_image %}
+          <img src="{{ d.animal_image.url }}" alt="{{ d.animal_name }}" loading="lazy"/>
+          <div class="card-img-overlay"></div>
+        {% else %}
+          <div class="card-img-placeholder">🌿</div>
+        {% endif %}
+        <div class="card-img-badges">
+          <span class="conf-badge low">LOW · {{ d.confidence|floatformat:0 }}%</span>
+          {% if dist is not None %}<span class="dist-badge">📍 {{ dist }} km</span>{% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-animal-row">
+          <div class="card-animal-name">{{ d.animal_name }}</div>
+          <span class="pill green">Low Risk</span>
+        </div>
+        <div class="card-time">🕐 {{ d.detected_at|date:"d M Y, H:i" }}</div>
+        {% if d.location_address %}
+          <div class="card-location"><span class="card-location-icon">📍</span><span class="card-location-text">{{ d.location_address }}</span></div>
+        {% elif d.latitude %}
+          <div class="card-location"><span class="card-location-icon">📍</span><span class="card-location-text">{{ d.latitude }}, {{ d.longitude }}</span></div>
+        {% endif %}
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-label">
+            <span class="conf-bar-text">Detection Confidence</span>
+            <span class="conf-bar-pct low">{{ d.confidence|floatformat:1 }}%</span>
+          </div>
+          <div class="conf-bar-track"><div class="conf-bar-fill low" style="width:{{ d.confidence|floatformat:0 }}%;"></div></div>
+        </div>
+      </div>
+      <div class="card-footer">
+        <span class="card-id">#DET-{{ d.id|stringformat:"04d" }}</span>
+        <button class="view-map-btn" onclick="openMapModal('{{ d.animal_name }}',{{ d.latitude|default:'null' }},{{ d.longitude|default:'null' }},'{{ dist|default:"N/A" }}','{{ d.confidence|floatformat:1 }}','{{ d.detected_at|date:"d M Y, H:i" }}')">
+          <i class="fa-solid fa-map-location-dot"></i> View on Map
+        </button>
+      </div>
+    </div>
+    {% endif %}
+
+    {% endwith %}
+    {% empty %}
+    <div class="empty-state">
+      <div class="empty-icon">{% if search_query %}🔍{% else %}📡{% endif %}</div>
+      <div class="empty-title">{% if search_query %}No Results Found{% else %}No Alerts In Range{% endif %}</div>
+      <div class="empty-sub">
+        {% if search_query %}No detections matched "{{ search_query }}" within your 10km team radius.
+        {% else %}No wildlife detections within 10 km of your station. The area is currently clear.{% endif %}
+      </div>
+      {% if search_query %}
+        <a href="{% url 'wildlife_alerts_list' %}" class="empty-link">✕ Clear Search</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+  </div><!-- /alerts-grid -->
+
+</div><!-- /content -->
+</main>
+
+<!-- ══ SINGLE DETECTION MAP MODAL ══ -->
+<div class="modal-backdrop" id="mapModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Detection Location</div>
+      <button class="modal-close" onclick="closeMapModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-map-frame" id="modalMapFrame"></div>
+      <div class="modal-info" id="modalInfo"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ALL ALERTS MAP MODAL ══ -->
+<div class="modal-backdrop" id="allMapModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">All Nearby Detections — Team Map</div>
+      <button class="modal-close" onclick="closeAllMapModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-map-frame" id="allModalMapFrame"></div>
+      <div style="margin-top:0.75rem;font-family:'Space Mono',monospace;font-size:0.56rem;color:var(--grey);letter-spacing:0.08em;">
+        📡 {{ total_nearby }} detection{{ total_nearby|pluralize }} within 10km of your station
+        {% if team_lat %} · Station: {{ team_lat }}, {{ team_lng }}{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Sidebar toggle ── */
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebarOverlay');
+  const hamburger = document.getElementById('hamburger');
+  hamburger.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+  overlay.addEventListener('click',   () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      sidebar.classList.remove('open'); overlay.classList.remove('open');
+      closeMapModal(); closeAllMapModal();
+    }
+  });
+
+  /* ── Live clock ── */
+  function updateClock() {
+    const n = new Date();
+    document.getElementById('liveClock').textContent =
+      String(n.getHours()).padStart(2,'0') + ':' +
+      String(n.getMinutes()).padStart(2,'0') + ':' +
+      String(n.getSeconds()).padStart(2,'0');
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  /* ── Confidence bar animation on load ── */
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.conf-bar-fill').forEach(el => {
+      const target = el.style.width;
+      el.style.width = '0%';
+      requestAnimationFrame(() => setTimeout(() => { el.style.width = target; }, 200));
+    });
+  });
+
+  /* ── Search clear button ── */
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
+  searchInput.addEventListener('input', () => {
+    searchClear.classList.toggle('show', searchInput.value.length > 0);
+  });
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchClear.classList.remove('show');
+    document.getElementById('searchForm').submit();
+  });
+
+  /* ── Single detection map modal ── */
+  function openMapModal(name, lat, lng, dist, conf, time) {
+    document.getElementById('modalTitle').textContent = '📍 ' + name + ' — Detection';
+    const frame = document.getElementById('modalMapFrame');
+
+    if (lat && lng && lat !== 'null' && lng !== 'null') {
+      const fLat = parseFloat(lat), fLng = parseFloat(lng);
+      frame.innerHTML = `<iframe
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${fLng-.05},${fLat-.05},${fLng+.05},${fLat+.05}&layer=mapnik&marker=${fLat},${fLng}"
+        loading="lazy" title="Detection location"></iframe>`;
+    } else {
+      frame.innerHTML = `<div class="modal-map-empty"><span style="font-size:2.5rem;opacity:0.3">🗺️</span>GPS coordinates unavailable for this detection</div>`;
+    }
+
+    document.getElementById('modalInfo').innerHTML = `
+      <div class="modal-info-item"><div class="modal-info-label">Animal</div><div class="modal-info-value">${name}</div></div>
+      <div class="modal-info-item"><div class="modal-info-label">Distance</div><div class="modal-info-value">${dist !== 'None' && dist !== 'N/A' ? dist + ' km' : 'N/A'}</div></div>
+      <div class="modal-info-item"><div class="modal-info-label">Confidence</div><div class="modal-info-value">${conf}%</div></div>
+      <div class="modal-info-item"><div class="modal-info-label">Detected At</div><div class="modal-info-value">${time}</div></div>
+      <div class="modal-info-item"><div class="modal-info-label">Latitude</div><div class="modal-info-value">${lat && lat !== 'null' ? parseFloat(lat).toFixed(5) : 'N/A'}</div></div>
+      <div class="modal-info-item"><div class="modal-info-label">Longitude</div><div class="modal-info-value">${lng && lng !== 'null' ? parseFloat(lng).toFixed(5) : 'N/A'}</div></div>
+    `;
+
+    document.getElementById('mapModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMapModal() {
+    document.getElementById('mapModal').classList.remove('open');
+    document.getElementById('modalMapFrame').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  /* ── All detections map ── */
+  document.getElementById('viewAllMapBtn').addEventListener('click', () => {
+    const teamLat = {{ team_lat|default:"null" }};
+    const teamLng = {{ team_lng|default:"null" }};
+    const frame   = document.getElementById('allModalMapFrame');
+
+    if (teamLat && teamLng) {
+      frame.innerHTML = `<iframe
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${teamLng-.14},${teamLat-.14},${teamLng+.14},${teamLat+.14}&layer=mapnik&marker=${teamLat},${teamLng}"
+        loading="lazy" title="Team area map"></iframe>`;
+    } else {
+      frame.innerHTML = `<div class="modal-map-empty"><span style="font-size:2.5rem;opacity:0.3">🗺️</span>Enable location services to view team area map</div>`;
+    }
+
+    document.getElementById('allMapModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  });
+
+  function closeAllMapModal() {
+    document.getElementById('allMapModal').classList.remove('open');
+    document.getElementById('allModalMapFrame').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  /* ── Backdrop click to close ── */
+  document.getElementById('mapModal').addEventListener('click',    e => { if (e.target === document.getElementById('mapModal'))    closeMapModal(); });
+  document.getElementById('allMapModal').addEventListener('click', e => { if (e.target === document.getElementById('allMapModal')) closeAllMapModal(); });
+</script>
+</body>
+</html>

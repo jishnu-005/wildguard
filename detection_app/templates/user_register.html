@@ -1,0 +1,885 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Create Account</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --black:           #ffffff;
+      --black-2:         #f3f8ee;
+      --black-3:         #e8f2df;
+      --kiwi:            #5a9e10;
+      --kiwi-bright:     #6dba18;
+      --kiwi-dim:        #3d7008;
+      --kiwi-glow:       rgba(90,158,16,0.15);
+      --kiwi-glow-strong:rgba(90,158,16,0.30);
+      --white:           #1a2e0e;
+      --grey:            #5a7a4a;
+      --red:             #e05555;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+
+    /* ── GRID BG ── */
+    .page-grid {
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(90,158,16,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(90,158,16,0.07) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none; z-index: 0;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove {
+      0%   { transform: translateY(0); }
+      100% { transform: translateY(48px); }
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 2.5rem;
+      z-index: 100;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.97) 0%, transparent 100%);
+      border-bottom: 1px solid rgba(90,158,16,0.12);
+      backdrop-filter: blur(8px);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 0.6rem;
+      text-decoration: none;
+    }
+    .nav-logo-icon {
+      width: 34px; height: 34px;
+      background: var(--kiwi); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 0 16px var(--kiwi-glow-strong);
+    }
+    .nav-logo-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem; letter-spacing: 0.12em; color: var(--white);
+    }
+    .nav-logo-text span { color: var(--kiwi); }
+    .nav-back {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--grey); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--kiwi); }
+
+    /* ── PAGE WRAPPER ── */
+    .page {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 7rem 1.5rem 3rem;
+    }
+
+    /* ── CARD ── */
+    .card {
+      width: 100%; max-width: 680px;
+      background: var(--black-2);
+      border: 1px solid rgba(90,158,16,0.18);
+      border-radius: 16px;
+      padding: 2.8rem 2.8rem 2.4rem;
+      box-shadow: 0 0 80px rgba(90,158,16,0.08), 0 0 0 1px rgba(90,158,16,0.06);
+      animation: fadeUp 0.7s ease forwards;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── CARD HEADER ── */
+    .card-header { margin-bottom: 2rem; }
+    .card-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--kiwi); margin-bottom: 0.5rem;
+    }
+    .card-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      letter-spacing: 0.04em; line-height: 1;
+    }
+    .card-sub {
+      font-size: 0.85rem; color: var(--grey);
+      margin-top: 0.5rem; line-height: 1.6;
+    }
+
+    /* ── DJANGO MESSAGES ── */
+    .messages { list-style: none; margin-bottom: 1.4rem; }
+    .messages li {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem; letter-spacing: 0.06em;
+      padding: 0.7rem 1rem; border-radius: 6px;
+      margin-bottom: 0.5rem;
+    }
+    .messages li.error   { background: rgba(224,85,85,0.08); border: 1px solid rgba(224,85,85,0.30); color: #c0392b; }
+    .messages li.success { background: rgba(90,158,16,0.08);  border: 1px solid rgba(90,158,16,0.30); color: var(--kiwi); }
+
+    /* ── FORM GRID ── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem 1.4rem;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 0.45rem; }
+    .form-group.full { grid-column: 1 / -1; }
+
+    label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--grey);
+    }
+    label .req { color: var(--kiwi); margin-left: 2px; }
+
+    /* ── INPUTS ── */
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="password"],
+    select,
+    input[type="file"] {
+      width: 100%;
+      background: var(--black-3);
+      border: 1px solid rgba(90,158,16,0.18);
+      border-radius: 7px;
+      padding: 0.75rem 1rem;
+      color: var(--white);
+      font-family: 'Syne', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      appearance: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--kiwi);
+      box-shadow: 0 0 0 3px rgba(90,158,16,0.12);
+    }
+    input::placeholder { color: var(--grey); opacity: 0.7; }
+
+    /* ── VALIDATION STATES ── */
+    input.input-error {
+      border-color: var(--red) !important;
+      box-shadow: 0 0 0 3px rgba(224,85,85,0.12) !important;
+    }
+    input.input-valid {
+      border-color: var(--kiwi) !important;
+      box-shadow: 0 0 0 3px rgba(90,158,16,0.10) !important;
+    }
+
+    /* ── FIELD ERROR MESSAGE ── */
+    .field-error {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.60rem;
+      letter-spacing: 0.06em;
+      color: var(--red);
+      margin-top: 0.15rem;
+      min-height: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .field-error.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .field-error::before {
+      content: '✘';
+      font-size: 0.55rem;
+      flex-shrink: 0;
+    }
+
+    /* ── FIELD SUCCESS MESSAGE ── */
+    .field-success {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.60rem;
+      letter-spacing: 0.06em;
+      color: var(--kiwi);
+      margin-top: 0.15rem;
+      min-height: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .field-success.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .field-success::before {
+      content: '✔';
+      font-size: 0.55rem;
+      flex-shrink: 0;
+    }
+
+    /* select arrow */
+    .select-wrap { position: relative; }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute; right: 1rem; top: 50%;
+      transform: translateY(-50%);
+      color: var(--kiwi); pointer-events: none;
+      font-size: 0.75rem;
+    }
+    select { cursor: pointer; padding-right: 2.2rem; }
+    select option { background: var(--black-2); color: var(--white); }
+
+    /* file input */
+    .file-wrap {
+      position: relative;
+      background: var(--black-3);
+      border: 1px dashed rgba(90,158,16,0.28);
+      border-radius: 7px;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .file-wrap:hover { border-color: var(--kiwi); }
+    .file-wrap input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+      padding: 0; border: none; background: none;
+    }
+    .file-icon { font-size: 1.1rem; }
+    .file-label {
+      font-size: 0.82rem; color: var(--grey);
+    }
+    .file-label span { color: var(--kiwi); }
+    #file-name {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.62rem; color: var(--kiwi);
+      margin-top: 0.3rem; display: none;
+    }
+
+    /* ── LOCATION ROW ── */
+    .location-row {
+      display: flex; gap: 0.6rem; align-items: stretch;
+    }
+    .location-row input { flex: 1; min-width: 0; }
+    .btn-detect {
+      flex-shrink: 0;
+      background: rgba(90,158,16,0.1);
+      border: 1px solid rgba(90,158,16,0.3);
+      border-radius: 7px;
+      padding: 0 1rem;
+      color: var(--kiwi);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      white-space: nowrap;
+      display: flex; align-items: center; gap: 0.4rem;
+      transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .btn-detect:hover {
+      background: rgba(90,158,16,0.18);
+      border-color: var(--kiwi);
+      box-shadow: 0 0 12px var(--kiwi-glow);
+    }
+    .btn-detect.loading { opacity: 0.6; pointer-events: none; }
+    .btn-detect .detect-icon { font-size: 0.95rem; }
+
+    /* location status */
+    #loc-status {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem; letter-spacing: 0.08em;
+      margin-top: 0.3rem; min-height: 0.9rem;
+    }
+    #loc-status.ok  { color: var(--kiwi); }
+    #loc-status.err { color: var(--red); }
+    #loc-status.info{ color: var(--grey); }
+
+    /* ── PASSWORD STRENGTH ── */
+    .pw-wrap { position: relative; }
+    .pw-toggle {
+      position: absolute; right: 0.9rem; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      color: var(--grey); cursor: pointer; font-size: 1rem;
+      line-height: 1; padding: 0;
+      transition: color 0.2s;
+    }
+    .pw-toggle:hover { color: var(--kiwi); }
+    .pw-wrap input { padding-right: 2.8rem; }
+
+    .strength-bar {
+      height: 3px; border-radius: 2px;
+      background: rgba(0,0,0,0.08);
+      margin-top: 0.4rem; overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%; width: 0%;
+      border-radius: 2px;
+      transition: width 0.3s, background 0.3s;
+    }
+    .strength-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.58rem; letter-spacing: 0.1em;
+      text-transform: uppercase; margin-top: 0.25rem;
+      color: var(--grey);
+    }
+
+    /* ── AVATAR PREVIEW ── */
+    .avatar-row {
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .avatar-preview {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--black-3);
+      border: 2px solid rgba(90,158,16,0.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; overflow: hidden; flex-shrink: 0;
+    }
+    .avatar-preview img {
+      width: 100%; height: 100%; object-fit: cover; display: none;
+    }
+    .avatar-info { flex: 1; min-width: 0; }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(90,158,16,0.12);
+      margin: 1.6rem 0;
+    }
+
+    /* ── SUBMIT ── */
+    .btn-submit {
+      width: 100%;
+      background: var(--kiwi);
+      color: #ffffff;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 1rem;
+      border: none; border-radius: 7px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+      position: relative; overflow: hidden;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+    }
+    .btn-submit::after {
+      content: ''; position: absolute; inset: 0;
+      background: white; opacity: 0; transition: opacity 0.2s;
+    }
+    .btn-submit:hover::after { opacity: 0.12; }
+    .btn-submit:hover {
+      box-shadow: 0 0 30px var(--kiwi-glow-strong);
+      transform: translateY(-2px);
+    }
+
+    /* ── FOOTER NOTE ── */
+    .form-footer {
+      text-align: center; margin-top: 1.2rem;
+      font-size: 0.82rem; color: var(--grey);
+    }
+    .form-footer a {
+      color: var(--kiwi); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .form-footer a:hover { color: var(--kiwi-bright); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      nav { padding: 1rem 1.2rem; }
+      .card { padding: 2rem 1.3rem 1.8rem; border-radius: 12px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+      .location-row { flex-direction: column; }
+      .btn-detect { padding: 0.75rem 1rem; justify-content: center; width: 100%; }
+      .avatar-row { flex-direction: column; align-items: flex-start; }
+      .avatar-info { width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+      .page { padding: 6rem 1rem 2.5rem; }
+      nav { padding: 0.85rem 1rem; }
+      .nav-logo-text { font-size: 1.25rem; }
+      .nav-logo-icon { width: 30px; height: 30px; font-size: 1rem; }
+      .card { padding: 1.8rem 1.1rem 1.6rem; border-radius: 10px; }
+      .card-title { font-size: 1.9rem; }
+      .btn-submit { font-size: 0.72rem; padding: 0.9rem; }
+    }
+
+    @media (max-width: 380px) {
+      .card { padding: 1.6rem 1rem 1.4rem; }
+      .form-grid { gap: 1rem; }
+    }
+
+    /* ── Touch targets for mobile devices ── */
+    @media (hover: none) and (pointer: coarse) {
+      input[type="text"],
+      input[type="email"],
+      input[type="tel"],
+      input[type="password"],
+      select {
+        font-size: 1rem;    /* prevents iOS auto-zoom on focus */
+        padding: 0.85rem 1rem;
+      }
+      .btn-submit  { padding: 1.1rem; font-size: 0.85rem; }
+      .btn-detect  { padding: 0.85rem 1rem; }
+      .pw-toggle   { padding: 0.5rem; right: 0.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-icon">🐾</div>
+    <div class="nav-logo-text">WILD<span>GUARD</span></div>
+  </a>
+  <a href="/" class="nav-back">← Back</a>
+</nav>
+
+<!-- PAGE -->
+<div class="page">
+  <div class="card">
+
+    <!-- Header -->
+    <div class="card-header">
+      <div class="card-label">// Create Account</div>
+      <h1 class="card-title">JOIN WILD GUARD</h1>
+      <p class="card-sub">Register to receive real-time wildlife alerts and help protect your community.</p>
+    </div>
+
+    <!-- Django Messages -->
+    {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}
+        <li class="{{ message.tags }}">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <!-- FORM -->
+    <form method="POST" action="{% url 'user_register' %}" enctype="multipart/form-data" novalidate id="registerForm">
+      {% csrf_token %}
+
+      <!-- Hidden fields: populated by JS when location is detected -->
+      <input type="hidden" id="latitude"          name="latitude"          value="{{ form_data.latitude|default:'' }}"/>
+      <input type="hidden" id="longitude"         name="longitude"         value="{{ form_data.longitude|default:'' }}"/>
+      <input type="hidden" id="location_accuracy" name="location_accuracy" value="{{ form_data.location_accuracy|default:'' }}"/>
+
+      <div class="form-grid">
+
+        <!-- Full Name -->
+        <div class="form-group">
+          <label for="name">Full Name <span class="req">*</span></label>
+          <input type="text" id="name" name="name"
+                 placeholder="John Doe"
+                 value="{{ form_data.name|default:'' }}" required/>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label for="email">Email Address <span class="req">*</span></label>
+          <input type="email" id="email" name="email"
+                 placeholder="john@email.com"
+                 value="{{ form_data.email|default:'' }}" required
+                 oninput="validateEmail(this)" onblur="validateEmail(this)"/>
+          <span class="field-error" id="email-error">Enter a valid email address</span>
+          <span class="field-success" id="email-ok">Looks good!</span>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-group">
+          <label for="phone">Phone Number <span class="req">*</span></label>
+          <input type="tel" id="phone" name="phone"
+                 placeholder="10-digit number"
+                 value="{{ form_data.phone|default:'' }}"
+                 pattern="[0-9]{10}" maxlength="10" required
+                 oninput="validatePhone(this)" onblur="validatePhone(this)"/>
+          <span class="field-error" id="phone-error">Must be exactly 10 digits</span>
+          <span class="field-success" id="phone-ok">Valid number!</span>
+        </div>
+
+        <!-- Gender -->
+        <div class="form-group">
+          <label for="gender">Gender <span class="req">*</span></label>
+          <div class="select-wrap">
+            <select id="gender" name="gender" required>
+              <option value="" disabled {% if not form_data.gender %}selected{% endif %}>Select gender</option>
+              <option value="male"   {% if form_data.gender == 'male'   %}selected{% endif %}>Male</option>
+              <option value="female" {% if form_data.gender == 'female' %}selected{% endif %}>Female</option>
+              <option value="others" {% if form_data.gender == 'others' %}selected{% endif %}>Others</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Location (full width) -->
+        <div class="form-group full">
+          <label for="location">Your Location <span class="req">*</span></label>
+          <div class="location-row">
+            <input type="text" id="location" name="location"
+                   placeholder="Detected location will appear here…"
+                   value="{{ form_data.location|default:'' }}" required readonly/>
+            <button type="button" class="btn-detect" id="detectBtn">
+              <span class="detect-icon">📍</span>
+              Detect Location
+            </button>
+          </div>
+          <span id="loc-status" class="info"></span>
+        </div>
+
+        <!-- Profile Image (full width) -->
+        <div class="form-group full">
+          <label>Profile Photo</label>
+          <div class="avatar-row">
+            <div class="avatar-preview" id="avatarPreview">
+              🐾
+              <img id="avatarImg" src="" alt="preview"/>
+            </div>
+            <div class="avatar-info">
+              <div class="file-wrap">
+                <span class="file-icon">📷</span>
+                <span class="file-label"><span>Choose a photo</span> or drag & drop</span>
+                <input type="file" id="profile_image" name="profile_image"
+                       accept="image/*" onchange="previewAvatar(this)"/>
+              </div>
+              <div id="file-name"></div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider full"/>
+
+        <!-- Password -->
+        <div class="form-group">
+          <label for="password">Password <span class="req">*</span></label>
+          <div class="pw-wrap">
+            <input type="password" id="password" name="password"
+                   placeholder="Min 8 characters" required
+                   oninput="checkStrength(this.value); validatePassword(this)"
+                   onblur="validatePassword(this)"/>
+            <button type="button" class="pw-toggle" onclick="togglePw('password', this)">👁</button>
+          </div>
+          <div class="strength-bar">
+            <div class="strength-fill" id="strengthFill"></div>
+          </div>
+          <div class="strength-text" id="strengthText"></div>
+          <span class="field-error" id="pw-error">Min 8 chars, include uppercase, number &amp; symbol</span>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group">
+          <label for="confirm_password">Confirm Password <span class="req">*</span></label>
+          <div class="pw-wrap">
+            <input type="password" id="confirm_password" name="confirm_password"
+                   placeholder="Repeat password" required
+                   oninput="checkMatch()"/>
+            <button type="button" class="pw-toggle" onclick="togglePw('confirm_password', this)">👁</button>
+          </div>
+          <div class="strength-text" id="matchText"></div>
+        </div>
+
+      </div><!-- /form-grid -->
+
+      <!-- Submit -->
+      <div style="margin-top:1.8rem;">
+        <button type="submit" class="btn-submit" id="submitBtn">
+          ⚡ Create My Account
+        </button>
+      </div>
+
+    </form>
+
+    <p class="form-footer">
+      Already have an account? <a href="{% url 'user_login' %}">Sign in →</a>
+    </p>
+
+  </div><!-- /card -->
+</div><!-- /page -->
+
+<script>
+  /* ── GEOLOCATION ── */
+  const detectBtn  = document.getElementById('detectBtn');
+  const locInput   = document.getElementById('location');
+  const locStatus  = document.getElementById('loc-status');
+
+  // Hidden fields for lat / lng / accuracy
+  const latInput  = document.getElementById('latitude');
+  const lngInput  = document.getElementById('longitude');
+  const accInput  = document.getElementById('location_accuracy');
+
+  detectBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      setStatus('Geolocation is not supported by your browser.', 'err');
+      return;
+    }
+    detectBtn.classList.add('loading');
+    detectBtn.innerHTML = '<span class="detect-icon">⏳</span> Detecting…';
+    setStatus('Requesting location permission…', 'info');
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+
+        // Populate hidden fields
+        latInput.value = latitude;
+        lngInput.value = longitude;
+        if (accuracy) accInput.value = accuracy;
+
+        setStatus('📡 Fetching address…', 'info');
+
+        try {
+          // Reverse-geocode with Nominatim (free, no API key)
+          const res  = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          const data = await res.json();
+          const addr = data.display_name || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+          locInput.value = addr;
+          locInput.removeAttribute('readonly');   // allow manual edits after fill
+          setStatus('✔ Location detected successfully.', 'ok');
+        } catch {
+          // Fallback: raw coordinates
+          locInput.value = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          locInput.removeAttribute('readonly');
+          setStatus('✔ Coordinates captured (no address lookup available).', 'ok');
+        }
+
+        resetDetectBtn();
+      },
+      (err) => {
+        const msgs = {
+          1: 'Permission denied. Please allow location access.',
+          2: 'Location unavailable. Try again.',
+          3: 'Request timed out. Try again.',
+        };
+        setStatus(msgs[err.code] || 'Could not detect location.', 'err');
+        resetDetectBtn();
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  });
+
+  function setStatus(msg, type) {
+    locStatus.textContent = msg;
+    locStatus.className   = type;
+  }
+
+  function resetDetectBtn() {
+    detectBtn.classList.remove('loading');
+    detectBtn.innerHTML = '<span class="detect-icon">📍</span> Detect Location';
+  }
+
+  /* ── AVATAR PREVIEW ── */
+  function previewAvatar(input) {
+    const fn   = document.getElementById('file-name');
+    const img  = document.getElementById('avatarImg');
+    const box  = document.getElementById('avatarPreview');
+
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      fn.textContent = file.name;
+      fn.style.display = 'block';
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        img.src = e.target.result;
+        img.style.display = 'block';
+        box.textContent = '';   // hide emoji placeholder
+        box.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  /* ── PASSWORD TOGGLE ── */
+  function togglePw(id, btn) {
+    const inp = document.getElementById(id);
+    const isText = inp.type === 'text';
+    inp.type = isText ? 'password' : 'text';
+    btn.textContent = isText ? '👁' : '🙈';
+  }
+
+  /* ── PASSWORD STRENGTH ── */
+  function checkStrength(val) {
+    const fill = document.getElementById('strengthFill');
+    const text = document.getElementById('strengthText');
+    let score  = 0;
+    if (val.length >= 8)                     score++;
+    if (/[A-Z]/.test(val))                   score++;
+    if (/[0-9]/.test(val))                   score++;
+    if (/[^A-Za-z0-9]/.test(val))            score++;
+
+    const levels = [
+      { pct: '0%',   col: 'transparent', lbl: '' },
+      { pct: '30%',  col: '#e05555',     lbl: 'Weak' },
+      { pct: '55%',  col: '#e0a030',     lbl: 'Fair' },
+      { pct: '78%',  col: '#5a9e10',     lbl: 'Good' },
+      { pct: '100%', col: '#6dba18',     lbl: 'Strong 🔒' },
+    ];
+    const lvl = levels[score];
+    fill.style.width      = lvl.pct;
+    fill.style.background = lvl.col;
+    text.textContent      = lvl.lbl;
+    text.style.color      = lvl.col;
+
+    checkMatch();
+  }
+
+  /* ── PASSWORD MATCH ── */
+  function checkMatch() {
+    const pw  = document.getElementById('password').value;
+    const cpw = document.getElementById('confirm_password').value;
+    const mt  = document.getElementById('matchText');
+    if (!cpw) { mt.textContent = ''; return; }
+    if (pw === cpw) {
+      mt.textContent = '✔ Passwords match';
+      mt.style.color = 'var(--kiwi)';
+    } else {
+      mt.textContent = '✘ Does not match';
+      mt.style.color = 'var(--red)';
+    }
+  }
+
+  /* ════════════════════════════════════════════════
+     ── FIELD VALIDATIONS (added, no existing code changed) ──
+     ════════════════════════════════════════════════ */
+
+  /* Helper: show / hide inline messages */
+  function showFieldError(errorId, okId, input) {
+    document.getElementById(errorId).classList.add('visible');
+    document.getElementById(okId).classList.remove('visible');
+    input.classList.add('input-error');
+    input.classList.remove('input-valid');
+  }
+
+  function showFieldOk(errorId, okId, input) {
+    document.getElementById(errorId).classList.remove('visible');
+    document.getElementById(okId).classList.add('visible');
+    input.classList.remove('input-error');
+    input.classList.add('input-valid');
+  }
+
+  function clearFieldState(errorId, okId, input) {
+    document.getElementById(errorId).classList.remove('visible');
+    document.getElementById(okId).classList.remove('visible');
+    input.classList.remove('input-error', 'input-valid');
+  }
+
+  /* ── EMAIL VALIDATION ── */
+  function validateEmail(input) {
+    const val = input.value.trim();
+    if (!val) { clearFieldState('email-error', 'email-ok', input); return false; }
+
+    // RFC-5322-inspired pattern: local@domain.tld
+    const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+    const valid = emailRegex.test(val);
+
+    if (valid) {
+      showFieldOk('email-error', 'email-ok', input);
+    } else {
+      showFieldError('email-error', 'email-ok', input);
+    }
+    return valid;
+  }
+
+  /* ── PHONE VALIDATION (exactly 10 digits) ── */
+  function validatePhone(input) {
+    // Strip non-digits while typing so user can't accidentally enter letters
+    input.value = input.value.replace(/\D/g, '').slice(0, 10);
+
+    const val = input.value;
+    if (!val) { clearFieldState('phone-error', 'phone-ok', input); return false; }
+
+    const valid = /^[0-9]{10}$/.test(val);
+
+    if (valid) {
+      showFieldOk('phone-error', 'phone-ok', input);
+    } else {
+      showFieldError('phone-error', 'phone-ok', input);
+    }
+    return valid;
+  }
+
+  /* ── PASSWORD VALIDATION ── */
+  function validatePassword(input) {
+    const val = input.value;
+    if (!val) {
+      document.getElementById('pw-error').classList.remove('visible');
+      input.classList.remove('input-error', 'input-valid');
+      return false;
+    }
+
+    const valid =
+      val.length >= 8 &&
+      /[A-Z]/.test(val) &&
+      /[0-9]/.test(val) &&
+      /[^A-Za-z0-9]/.test(val);
+
+    if (valid) {
+      document.getElementById('pw-error').classList.remove('visible');
+      input.classList.remove('input-error');
+      input.classList.add('input-valid');
+    } else {
+      document.getElementById('pw-error').classList.add('visible');
+      input.classList.add('input-error');
+      input.classList.remove('input-valid');
+    }
+    return valid;
+  }
+
+  /* ── FORM-LEVEL SUBMIT GUARD ── */
+  document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const emailOk  = validateEmail(document.getElementById('email'));
+    const phoneOk  = validatePhone(document.getElementById('phone'));
+    const pwOk     = validatePassword(document.getElementById('password'));
+
+    const pw  = document.getElementById('password').value;
+    const cpw = document.getElementById('confirm_password').value;
+    const matchOk = pw === cpw && pw.length > 0;
+
+    if (!matchOk) {
+      const mt = document.getElementById('matchText');
+      mt.textContent = '✘ Passwords do not match';
+      mt.style.color = 'var(--red)';
+      document.getElementById('confirm_password').classList.add('input-error');
+    }
+
+    if (!emailOk || !phoneOk || !pwOk || !matchOk) {
+      e.preventDefault();
+      // Scroll to first error
+      const firstErr = document.querySelector('.input-error');
+      if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+</script>
+</body>
+</html>

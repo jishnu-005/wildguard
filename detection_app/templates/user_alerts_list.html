@@ -1,0 +1,1137 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – Wildlife Alerts</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg:        #0d1a07;
+      --bg2:       #111f09;
+      --bg3:       #16260c;
+      --surface:   #192d0c;
+      --surface2:  #1f3710;
+      --border:    rgba(110,200,40,0.13);
+      --border2:   rgba(110,200,40,0.22);
+      --kiwi:      #7dc832;
+      --kiwi-dim:  #4f8a18;
+      --kiwi-glow: rgba(125,200,50,0.18);
+      --kiwi-text: #a8e060;
+      --white:     #e8f5d8;
+      --white2:    #c4dfa8;
+      --muted:     #6a8a55;
+      --red:       #f05555;
+      --red-dim:   rgba(240,85,85,0.12);
+      --amber:     #f0a020;
+      --amber-dim: rgba(240,160,32,0.12);
+      --blue:      #4488ff;
+      --blue-dim:  rgba(68,136,255,0.12);
+      --sidebar-w: 260px;
+      --topbar-h:  68px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(125,200,50,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(125,200,50,0.05) 0%, transparent 55%);
+    }
+    .noise {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    @keyframes fadeUp    { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn    { from{opacity:0} to{opacity:1} }
+    @keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes sosPulse  { 0%,100%{box-shadow:0 0 0 0 rgba(240,85,85,0.5)} 50%{box-shadow:0 0 0 12px rgba(240,85,85,0)} }
+    @keyframes radarSpin { to { transform: rotate(360deg); } }
+    @keyframes radarPing { 0%{transform:scale(1);opacity:0.6} 100%{transform:scale(2.5);opacity:0} }
+    @keyframes scanLine  { 0%{left:-100%} 100%{left:150%} }
+    @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ═══ LAYOUT ═══ */
+    .shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+    /* ═══ SIDEBAR ═══ */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      background: var(--bg2); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1.4rem 1.4rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .sidebar-logo-mark {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--kiwi), var(--kiwi-dim));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+      box-shadow: 0 0 20px var(--kiwi-glow);
+    }
+    .sidebar-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.08em; color: var(--white); line-height: 1; }
+    .sidebar-logo-text span { color: var(--kiwi); }
+    .sidebar-logo-tagline { font-family: 'JetBrains Mono', monospace; font-size: 0.5rem; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; margin-top: 2px; }
+    .sidebar-section-label { font-family: 'JetBrains Mono', monospace; font-size: 0.5rem; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; padding: 1.2rem 1.4rem 0.5rem; opacity: 0.6; }
+    .nav-links { display: flex; flex-direction: column; gap: 2px; padding: 0 0.8rem; }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.85rem; border-radius: 10px;
+      text-decoration: none; color: var(--muted);
+      font-size: 0.88rem; font-weight: 500;
+      transition: background 0.15s, color 0.15s; position: relative;
+    }
+    .nav-link:hover { background: var(--surface); color: var(--white2); }
+    .nav-link.active { background: rgba(125,200,50,0.1); color: var(--kiwi-text); }
+    .nav-link.active::before { content: ''; position: absolute; left: 0; top: 20%; bottom: 20%; width: 3px; border-radius: 0 3px 3px 0; background: var(--kiwi); }
+    .nav-icon { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
+    .sidebar-sos {
+      margin: 1rem 0.8rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.9rem 1rem; border-radius: 12px;
+      background: rgba(240,85,85,0.08); border: 1px solid rgba(240,85,85,0.25);
+      text-decoration: none; color: var(--red);
+      font-weight: 700; font-size: 0.88rem;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .sidebar-sos:hover { background: rgba(240,85,85,0.14); transform: translateY(-1px); }
+    .sidebar-sos-icon { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; background: var(--red); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; animation: sosPulse 2.5s ease-in-out infinite; }
+    .sidebar-sos-title { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.08em; }
+    .sidebar-sos-sub { font-size: 0.65rem; color: rgba(240,85,85,0.7); font-weight: 400; margin-top: 1px; }
+    .sidebar-user { margin-top: auto; border-top: 1px solid var(--border); padding: 1rem 1.2rem; display: flex; align-items: center; gap: 0.75rem; }
+    .sidebar-avatar { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--border2); background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; overflow: hidden; position: relative; }
+    .sidebar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .sidebar-avatar-dot { position: absolute; bottom: 0; right: 0; width: 10px; height: 10px; border-radius: 50%; background: #4ade80; border: 2px solid var(--bg2); animation: pulse 2s infinite; }
+    .sidebar-user-name { font-weight: 700; font-size: 0.84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { font-family: 'JetBrains Mono', monospace; font-size: 0.52rem; letter-spacing: 0.1em; color: var(--kiwi); text-transform: uppercase; }
+
+    /* ═══ TOPBAR ═══ */
+    .topbar {
+      position: fixed; top: 0; left: var(--sidebar-w); right: 0; height: var(--topbar-h);
+      background: rgba(13,26,7,0.92); border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem; z-index: 90;
+      transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .topbar-left { display: flex; flex-direction: column; gap: 2px; }
+    .topbar-breadcrumb { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase; }
+    .topbar-breadcrumb span { color: var(--kiwi); }
+    .topbar-title { font-weight: 700; font-size: 1.05rem; color: var(--white); }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-time { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; letter-spacing: 0.1em; color: var(--muted); padding: 0.3rem 0.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+    .topbar-btn { width: 38px; height: 38px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; text-decoration: none; color: var(--white); transition: background 0.2s, border-color 0.2s; }
+    .topbar-btn:hover { background: var(--surface2); border-color: var(--border2); }
+    .topbar-status { display: flex; align-items: center; gap: 0.45rem; padding: 0.3rem 0.75rem; background: rgba(125,200,50,0.08); border: 1px solid rgba(125,200,50,0.2); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: var(--kiwi); letter-spacing: 0.05em; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--kiwi); animation: pulse 2s infinite; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 0.4rem; border: none; background: none; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--white2); border-radius: 2px; transition: all 0.3s; }
+
+    /* ═══ MAIN ═══ */
+    .main-wrap { margin-left: var(--sidebar-w); padding-top: var(--topbar-h); min-height: 100vh; transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1); }
+    .main { padding: 2rem; max-width: 1280px; }
+
+    /* ═══ PAGE BANNER ═══ */
+    .page-banner {
+      border-radius: 20px; padding: 1.8rem 2.2rem; margin-bottom: 1.8rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+      position: relative; overflow: hidden;
+      animation: fadeUp 0.4s ease forwards;
+      background: linear-gradient(135deg, #0f2408 0%, #172e09 40%, #0d1a07 100%);
+      border: 1px solid var(--border2);
+    }
+    .page-banner::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(125,200,50,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(125,200,50,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .page-banner::after { content: '🔔'; position: absolute; right: 2rem; top: 50%; transform: translateY(-50%); font-size: 8rem; opacity: 0.04; pointer-events: none; }
+
+    /* Radar animation in banner */
+    .radar-wrap {
+      position: relative; z-index: 1; flex-shrink: 0;
+      width: 100px; height: 100px;
+    }
+    .radar-ring {
+      position: absolute; inset: 0; border-radius: 50%;
+      border: 1.5px solid rgba(125,200,50,0.2);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .radar-ring::before {
+      content: '';
+      position: absolute; inset: 10px; border-radius: 50%;
+      border: 1.5px solid rgba(125,200,50,0.15);
+    }
+    .radar-ring::after {
+      content: '';
+      position: absolute; inset: 22px; border-radius: 50%;
+      border: 1.5px solid rgba(125,200,50,0.1);
+    }
+    .radar-sweep {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: conic-gradient(from 0deg, transparent 75%, rgba(125,200,50,0.25) 100%);
+      animation: radarSpin 3s linear infinite;
+    }
+    .radar-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 8px; height: 8px; border-radius: 50%; background: var(--kiwi); box-shadow: 0 0 12px var(--kiwi-glow); }
+    .radar-ping {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(125,200,50,0.3);
+      animation: radarPing 2s ease-out infinite;
+    }
+    .banner-left { position: relative; z-index: 1; flex: 1; }
+    .banner-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+    .banner-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(1.8rem,3.5vw,2.6rem); letter-spacing: 0.06em; color: var(--white); line-height: 1; margin-bottom: 0.4rem; }
+    .banner-sub { font-size: 0.84rem; color: var(--muted); line-height: 1.5; }
+    .banner-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.9rem; }
+    .banner-chip {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: rgba(125,200,50,0.08); border: 1px solid rgba(125,200,50,0.18);
+      border-radius: 20px; padding: 0.28rem 0.8rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; letter-spacing: 0.06em; color: var(--kiwi-text);
+    }
+    .banner-chip.red { background: rgba(240,85,85,0.1); border-color: rgba(240,85,85,0.25); color: var(--red); }
+
+    /* ═══ STATS STRIP ═══ */
+    .stats-strip {
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem;
+      margin-bottom: 1.8rem;
+      animation: fadeUp 0.45s ease forwards;
+    }
+    .stat-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem 1.1rem;
+      display: flex; align-items: center; gap: 0.85rem;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--border2); }
+    .stat-card-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .stat-card.s-total .stat-card-icon  { background: rgba(125,200,50,0.1); border: 1px solid rgba(125,200,50,0.2); }
+    .stat-card.s-near  .stat-card-icon  { background: var(--amber-dim); border: 1px solid rgba(240,160,32,0.2); }
+    .stat-card.s-conf  .stat-card-icon  { background: var(--blue-dim); border: 1px solid rgba(68,136,255,0.2); }
+    .stat-card.s-zone  .stat-card-icon  { background: var(--red-dim); border: 1px solid rgba(240,85,85,0.2); }
+    .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.04em; line-height: 1; }
+    .stat-card.s-total .stat-num { color: var(--kiwi); }
+    .stat-card.s-near  .stat-num { color: var(--amber); }
+    .stat-card.s-conf  .stat-num { color: var(--blue); }
+    .stat-card.s-zone  .stat-num { color: var(--red); }
+    .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+
+    /* ═══ TOOLBAR (search + map btn) ═══ */
+    .toolbar {
+      display: flex; align-items: center; gap: 0.85rem;
+      flex-wrap: wrap; margin-bottom: 1.4rem;
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .search-wrap {
+      flex: 1; min-width: 200px;
+      position: relative;
+    }
+    .search-icon {
+      position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: 0.9rem; pointer-events: none;
+    }
+    .search-input {
+      width: 100%; padding: 0.65rem 1rem 0.65rem 2.4rem;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; color: var(--white);
+      font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+    }
+    .search-input::placeholder { color: var(--muted); }
+    .search-input:focus { border-color: var(--border2); box-shadow: 0 0 0 3px rgba(125,200,50,0.08); }
+    .search-clear {
+      position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 0.85rem; padding: 0.2rem; display: none;
+      transition: color 0.15s;
+    }
+    .search-clear:hover { color: var(--white); }
+    .search-clear.show { display: block; }
+
+    .toolbar-right { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+
+    .map-btn {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.65rem 1.2rem;
+      background: rgba(68,136,255,0.1); border: 1px solid rgba(68,136,255,0.3);
+      border-radius: 12px; color: var(--blue);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+      font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      text-decoration: none; cursor: pointer;
+      transition: background 0.15s, transform 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .map-btn:hover { background: rgba(68,136,255,0.18); transform: translateY(-1px); border-color: rgba(68,136,255,0.5); }
+
+    .sort-select {
+      padding: 0.65rem 0.9rem;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; color: var(--white);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      letter-spacing: 0.08em; outline: none; cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .sort-select:focus { border-color: var(--border2); }
+
+    /* Search result info */
+    .search-info {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 1rem;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      letter-spacing: 0.08em; color: var(--muted);
+      animation: slideDown 0.2s ease forwards;
+    }
+    .search-info strong { color: var(--kiwi); }
+    .search-info-clear { color: var(--red); text-decoration: none; margin-left: 0.5rem; }
+    .search-info-clear:hover { text-decoration: underline; }
+
+    /* ═══ SECTION HEADER ═══ */
+    .section-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .section-hd-left { display: flex; align-items: center; gap: 0.65rem; }
+    .section-hd-line { width: 4px; height: 18px; background: var(--kiwi); border-radius: 4px; }
+    .section-title { font-weight: 700; font-size: 1rem; }
+    .section-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+    .result-count { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em; color: var(--muted); }
+    .result-count span { color: var(--kiwi); }
+
+    /* ═══ ALERTS GRID ═══ */
+    .alerts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .alert-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 18px; overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
+      animation: fadeUp 0.5s ease forwards; opacity: 0;
+      position: relative;
+    }
+    .alert-card:hover { transform: translateY(-4px); box-shadow: 0 14px 36px rgba(0,0,0,0.35); border-color: var(--border2); }
+    .alert-card-accent { height: 3px; }
+
+    /* Confidence-based accent color */
+    .alert-card.conf-high   .alert-card-accent { background: var(--red); }
+    .alert-card.conf-mid    .alert-card-accent { background: var(--amber); }
+    .alert-card.conf-low    .alert-card-accent { background: var(--kiwi); }
+
+    /* Image zone */
+    .alert-card-image {
+      width: 100%; height: 160px; object-fit: cover;
+      background: var(--surface);
+      display: block;
+      position: relative;
+    }
+    .alert-card-image img {
+      width: 100%; height: 100%; object-fit: cover;
+      transition: transform 0.35s ease;
+    }
+    .alert-card:hover .alert-card-image img { transform: scale(1.04); }
+    .alert-card-image-placeholder {
+      width: 100%; height: 160px;
+      background:
+        radial-gradient(circle at 40% 50%, rgba(125,200,50,0.08) 0%, transparent 60%),
+        var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem; color: var(--muted); opacity: 0.5;
+    }
+    .alert-card-image-overlay {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(to bottom, transparent 40%, rgba(13,26,7,0.85) 100%);
+      pointer-events: none;
+    }
+    .alert-card-img-badges {
+      position: absolute; top: 0.75rem; left: 0.75rem; right: 0.75rem;
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .conf-badge {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      font-weight: 700; letter-spacing: 0.1em;
+      padding: 4px 9px; border-radius: 8px;
+      backdrop-filter: blur(12px);
+    }
+    .conf-badge.high { background: rgba(240,85,85,0.75); color: #fff; border: 1px solid rgba(240,85,85,0.4); }
+    .conf-badge.mid  { background: rgba(240,160,32,0.75); color: #fff; border: 1px solid rgba(240,160,32,0.4); }
+    .conf-badge.low  { background: rgba(125,200,50,0.7);  color: #fff; border: 1px solid rgba(125,200,50,0.4); }
+    .dist-badge {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      font-weight: 700; letter-spacing: 0.08em;
+      padding: 4px 9px; border-radius: 8px;
+      background: rgba(13,26,7,0.75); color: var(--white2);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px);
+      display: flex; align-items: center; gap: 0.3rem;
+    }
+
+    .alert-card-body { padding: 1.1rem 1.2rem; flex: 1; }
+    .alert-animal-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.35rem; }
+    .alert-animal-name {
+      font-family: 'Bebas Neue', sans-serif; font-size: 1.25rem;
+      letter-spacing: 0.06em; color: var(--white); line-height: 1;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+      font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 20px;
+    }
+    .pill.red   { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(240,85,85,0.25); }
+    .pill.amber { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,160,32,0.25); }
+    .pill.green { background: rgba(125,200,50,0.1); color: var(--kiwi); border: 1px solid rgba(125,200,50,0.25); }
+    .pill.blue  { background: var(--blue-dim);  color: var(--blue);  border: 1px solid rgba(68,136,255,0.25); }
+
+    .alert-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+
+    .alert-meta-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;
+      margin-bottom: 0.9rem;
+    }
+    .alert-meta-item {}
+    .alert-meta-label { font-family: 'JetBrains Mono', monospace; font-size: 0.48rem; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
+    .alert-meta-value { font-size: 0.8rem; font-weight: 600; color: var(--white2); }
+
+    .alert-location {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 0.7rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 0.9rem;
+      font-size: 0.75rem; color: var(--muted);
+    }
+    .alert-location-icon { font-size: 0.82rem; flex-shrink: 0; }
+    .alert-location-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Confidence bar */
+    .conf-bar-wrap { margin-bottom: 0.5rem; }
+    .conf-bar-label {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 5px;
+    }
+    .conf-bar-text { font-family: 'JetBrains Mono', monospace; font-size: 0.52rem; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+    .conf-bar-pct  { font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; font-weight: 700; }
+    .conf-bar-pct.high { color: var(--red); }
+    .conf-bar-pct.mid  { color: var(--amber); }
+    .conf-bar-pct.low  { color: var(--kiwi); }
+    .conf-bar-track { height: 5px; background: var(--surface); border-radius: 10px; overflow: hidden; }
+    .conf-bar-fill  { height: 100%; border-radius: 10px; transition: width 1s ease; }
+    .conf-bar-fill.high { background: linear-gradient(90deg, var(--amber), var(--red)); }
+    .conf-bar-fill.mid  { background: linear-gradient(90deg, var(--kiwi), var(--amber)); }
+    .conf-bar-fill.low  { background: var(--kiwi); }
+
+    /* Card footer */
+    .alert-card-footer {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+      padding: 0.85rem 1.2rem;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.12);
+    }
+    .view-map-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 0.9rem;
+      background: rgba(68,136,255,0.1); border: 1px solid rgba(68,136,255,0.25);
+      border-radius: 8px; color: var(--blue);
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      text-decoration: none; cursor: pointer;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .view-map-btn:hover { background: rgba(68,136,255,0.2); transform: scale(1.03); }
+
+    .alert-id {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+      letter-spacing: 0.1em; color: var(--muted);
+    }
+
+    /* ═══ MAP MODAL ═══ */
+    .modal-backdrop {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+      align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .modal-backdrop.open { display: flex; animation: fadeIn 0.2s ease forwards; }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 20px; overflow: hidden;
+      width: 100%; max-width: 760px; max-height: 90vh;
+      display: flex; flex-direction: column;
+      animation: fadeUp 0.25s ease forwards;
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; letter-spacing: 0.07em; color: var(--white); }
+    .modal-close {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1rem; color: var(--muted);
+      transition: background 0.15s, color 0.15s;
+    }
+    .modal-close:hover { background: var(--surface2); color: var(--white); }
+    .modal-body { flex: 1; overflow: auto; padding: 1.5rem; }
+    .modal-map-frame {
+      width: 100%; height: 380px; border-radius: 14px; overflow: hidden;
+      border: 1px solid var(--border); background: var(--surface);
+    }
+    .modal-map-frame iframe { width: 100%; height: 100%; border: none; }
+    .modal-info {
+      margin-top: 1rem;
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 0.85rem;
+    }
+    .modal-info-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 0.9rem; }
+    .modal-info-label { font-family: 'JetBrains Mono', monospace; font-size: 0.48rem; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; }
+    .modal-info-value { font-size: 0.82rem; font-weight: 600; color: var(--white2); }
+
+    /* ═══ EMPTY STATE ═══ */
+    .empty-state {
+      grid-column: 1/-1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 4rem 2rem; text-align: center;
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .empty-icon { font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.4; }
+    .empty-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.5rem; }
+    .empty-sub { font-size: 0.82rem; color: var(--muted); line-height: 1.6; max-width: 340px; }
+    .empty-btn {
+      margin-top: 1.4rem; display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.72rem 1.4rem; background: var(--kiwi-dim); color: var(--white);
+      border-radius: 10px; text-decoration: none; font-size: 0.88rem; font-weight: 700;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .empty-btn:hover { background: var(--kiwi); transform: scale(1.02); }
+
+    /* ═══ SIDEBAR OVERLAY ═══ */
+    .sidebar-overlay { display: none; position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width: 1100px) { .stats-strip { grid-template-columns: repeat(2,1fr); } }
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { transform: translateX(-260px); width: 260px; }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+      .sidebar-overlay.show { opacity: 1; pointer-events: auto; }
+      .topbar { left: 0; }
+      .main-wrap { margin-left: 0; }
+      .hamburger { display: flex; }
+    }
+    @media (max-width: 700px) {
+      .main { padding: 1.2rem; }
+      .page-banner { flex-direction: column; align-items: flex-start; }
+      .radar-wrap { display: none; }
+      .topbar { padding: 0 1.1rem; }
+      .topbar-status { display: none; }
+      .toolbar { gap: 0.5rem; }
+      .toolbar-right { width: 100%; }
+      .map-btn, .sort-select { flex: 1; justify-content: center; }
+      .modal-info { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 480px) {
+      .stats-strip { grid-template-columns: 1fr 1fr; }
+      .topbar-time { display: none; }
+      .alerts-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="shell">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="sidebar" id="sidebar">
+    <a href="{% url 'user_home' %}" class="sidebar-logo">
+      <div class="sidebar-logo-mark">🐾</div>
+      <div>
+        <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+        <div class="sidebar-logo-tagline">// Wildlife Protection Network</div>
+      </div>
+    </a>
+    <div class="sidebar-section-label">// Navigation</div>
+    <nav class="nav-links">
+      <a href="{% url 'user_home' %}" class="nav-link"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a href="{% url 'user_alerts_list' %}" class="nav-link active"><span class="nav-icon">🔔</span> Wildlife Alerts</a>
+      <a href="{% url 'user_danger_zone' %}" class="nav-link"><span class="nav-icon">🗺️</span> Danger Zone Map</a>
+      <a href="{% url 'user_report' %}" class="nav-link"><span class="nav-icon">📋</span> My Reports</a>
+    </nav>
+    <div class="sidebar-section-label" style="margin-top:0.5rem;">// Account</div>
+    <nav class="nav-links">
+      <a href="/user_profile/" class="nav-link"><span class="nav-icon">👤</span> My Profile</a>
+    </nav>
+    <a href="{% url 'sos_report' %}" class="sidebar-sos">
+      <div class="sidebar-sos-icon">🚨</div>
+      <div>
+        <div class="sidebar-sos-title">SOS Emergency</div>
+        <div class="sidebar-sos-sub">Report instantly</div>
+      </div>
+    </a>
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">
+        {% if user.profile_image %}<img src="{{ user.profile_image.url }}" alt="{{ user.name }}"/>{% else %}🌿{% endif %}
+        <div class="sidebar-avatar-dot"></div>
+      </div>
+      <div>
+        <div class="sidebar-user-name">{{ user.name|default:"Wildlife Watcher" }}</div>
+        <div class="sidebar-user-role">WG Citizen</div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ══════════ TOPBAR ══════════ -->
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <button class="hamburger" id="hamburgerBtn" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-left">
+        <div class="topbar-breadcrumb">WildGuard / <span>Wildlife Alerts</span></div>
+        <div class="topbar-title">Nearby Wildlife Alerts 🔔</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-status"><span class="status-dot"></span>Live Feed</div>
+      <div class="topbar-time" id="liveClock">00:00:00</div>
+      <a href="/user_profile/" class="topbar-btn">👤</a>
+      <a href="/logout/" class="topbar-btn"><i class="fa-solid fa-right-from-bracket"></i></a>
+    </div>
+  </header>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <div class="main-wrap">
+  <div class="main">
+
+    <!-- PAGE BANNER -->
+    <div class="page-banner">
+      <div class="banner-left">
+        <div class="banner-eyebrow">// Wildlife Detection Feed · 10km Radius</div>
+        <div class="banner-title">Wildlife Alerts</div>
+        <div class="banner-sub">Live detections within 10 km of your location, sorted by proximity.</div>
+        <div class="banner-chips">
+          <span class="banner-chip">📍 {{ user.location_address|default:"Your Area" }}</span>
+          <span class="banner-chip">📡 10 km Radius Active</span>
+          {% if total_nearby %}
+            <span class="banner-chip red">🔴 {{ total_nearby }} Active Alert{{ total_nearby|pluralize }}</span>
+          {% endif %}
+          {% if search_query %}
+            <span class="banner-chip" style="background:rgba(240,160,32,0.1);border-color:rgba(240,160,32,0.3);color:var(--amber);">🔍 "{{ search_query }}"</span>
+          {% endif %}
+        </div>
+      </div>
+      <!-- Radar animation -->
+      <div class="radar-wrap">
+        <div class="radar-ring">
+          <div class="radar-sweep"></div>
+          <div class="radar-center"></div>
+          <div class="radar-ping"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS STRIP -->
+    <div class="stats-strip">
+      <div class="stat-card s-total">
+        <div class="stat-card-icon">🔔</div>
+        <div>
+          <div class="stat-num">{{ total_nearby }}</div>
+          <div class="stat-label">Nearby Alerts</div>
+        </div>
+      </div>
+      <div class="stat-card s-near">
+        <div class="stat-card-icon">⚡</div>
+        <div>
+          <div class="stat-num" id="highConfCount">—</div>
+          <div class="stat-label">High Confidence</div>
+        </div>
+      </div>
+      <div class="stat-card s-conf">
+        <div class="stat-card-icon">📡</div>
+        <div>
+          <div class="stat-num">10km</div>
+          <div class="stat-label">Scan Radius</div>
+        </div>
+      </div>
+      <div class="stat-card s-zone">
+        <div class="stat-card-icon">📍</div>
+        <div>
+          <div class="stat-num">
+            {% if user.latitude %}✓{% else %}?{% endif %}
+          </div>
+          <div class="stat-label">Location Status</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <form method="GET" action="" id="searchForm">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <span class="search-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+          <input
+            type="text"
+            name="q"
+            id="searchInput"
+            class="search-input"
+            placeholder="Search by animal name… (e.g. Elephant, Tiger)"
+            value="{{ search_query }}"
+            autocomplete="off"
+          />
+          <button type="button" class="search-clear {% if search_query %}show{% endif %}" id="searchClear">✕</button>
+        </div>
+        <div class="toolbar-right">
+          <button type="submit" class="map-btn" style="background:rgba(125,200,50,0.1);border-color:rgba(125,200,50,0.3);color:var(--kiwi);">
+            <i class="fa-solid fa-magnifying-glass"></i> Search
+          </button>
+          <button type="button" class="map-btn" id="viewAllMapBtn">
+            <i class="fa-solid fa-map-location-dot"></i> View on Map
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Search result info -->
+    {% if search_query %}
+    <div class="search-info">
+      <span>Showing results for <strong>"{{ search_query }}"</strong> — {{ total_nearby }} alert{{ total_nearby|pluralize }} found</span>
+      <a href="{% url 'user_alerts_list' %}" class="search-info-clear">✕ Clear</a>
+    </div>
+    {% endif %}
+
+    <!-- SECTION HEADER -->
+    <div class="section-hd">
+      <div class="section-hd-left">
+        <div class="section-hd-line"></div>
+        <div class="section-title">{% if search_query %}Search Results{% else %}Nearby Detections{% endif %}</div>
+        <div class="section-meta">— within 10km</div>
+      </div>
+      <div class="result-count">Showing <span>{{ total_nearby }}</span> alert{{ total_nearby|pluralize }}</div>
+    </div>
+
+    <!-- ALERTS GRID -->
+    <div class="alerts-grid" id="alertsGrid">
+
+      {% for item in nearby_alerts %}
+      {% with d=item.detection dist=item.distance %}
+
+      {% comment %} Determine confidence class {% endcomment %}
+      {% if d.confidence >= 0.75 %}
+        {% with conf_class="high" conf_label="HIGH" %}
+        <div
+          class="alert-card conf-{{ conf_class }}"
+          data-lat="{{ d.latitude|default:'null' }}"
+          data-lng="{{ d.longitude|default:'null' }}"
+          data-name="{{ d.animal_name }}"
+          data-dist="{{ dist|default:'N/A' }}"
+          data-conf="{{ d.confidence|floatformat:0 }}"
+          data-loc="{{ d.location_address|default:'Location unavailable' }}"
+          data-id="{{ d.id }}"
+          style="animation-delay:{{ forloop.counter0 }}00ms;"
+        >
+          <div class="alert-card-accent"></div>
+          <div class="alert-card-image" style="position:relative;">
+            {% if d.animal_image %}
+              <img src="{{ d.animal_image.url }}" alt="{{ d.animal_name }}" loading="lazy"/>
+              <div class="alert-card-image-overlay"></div>
+            {% else %}
+              <div class="alert-card-image-placeholder">🦁</div>
+            {% endif %}
+            <div class="alert-card-img-badges">
+              <span class="conf-badge {{ conf_class }}">{{ conf_class|upper }} · {{ d.confidence|floatformat:0 }}%</span>
+              {% if dist is not None %}
+              <span class="dist-badge">📍 {{ dist }} km</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="alert-card-body">
+            <div class="alert-animal-row">
+              <div class="alert-animal-name">{{ d.animal_name }}</div>
+              <span class="pill red">⚠ {{ conf_class }}</span>
+            </div>
+            <div class="alert-time">🕐 {{ d.detected_at|date:"d M Y, H:i" }}</div>
+            {% if d.location_address %}
+            <div class="alert-location">
+              <span class="alert-location-icon">📍</span>
+              <span class="alert-location-text">{{ d.location_address }}</span>
+            </div>
+            {% elif d.latitude %}
+            <div class="alert-location">
+              <span class="alert-location-icon">📍</span>
+              <span class="alert-location-text">{{ d.latitude }}, {{ d.longitude }}</span>
+            </div>
+            {% endif %}
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label">
+                <span class="conf-bar-text">Detection Confidence</span>
+                <span class="conf-bar-pct {{ conf_class }}">{{ d.confidence|floatformat:1 }}%</span>
+              </div>
+              <div class="conf-bar-track">
+                <div class="conf-bar-fill {{ conf_class }}" style="width: {{ d.confidence|floatformat:0 }}%;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="alert-card-footer">
+            <span class="alert-id">#DET-{{ d.id|stringformat:"04d" }}</span>
+            <button
+              class="view-map-btn"
+              onclick="openMapModal('{{ d.animal_name }}', {{ d.latitude|default:'null' }}, {{ d.longitude|default:'null' }}, '{{ dist|default:"N/A" }}', '{{ d.confidence|floatformat:1 }}', '{{ d.detected_at|date:"d M Y, H:i" }}')"
+            >
+              <i class="fa-solid fa-map-location-dot"></i> View on Map
+            </button>
+          </div>
+        </div>
+        {% endwith %}
+      {% elif d.confidence >= 0.45 %}
+        {% with conf_class="mid" %}
+        <div
+          class="alert-card conf-{{ conf_class }}"
+          data-lat="{{ d.latitude|default:'null' }}"
+          data-lng="{{ d.longitude|default:'null' }}"
+          data-name="{{ d.animal_name }}"
+          style="animation-delay:{{ forloop.counter0 }}00ms;"
+        >
+          <div class="alert-card-accent"></div>
+          <div class="alert-card-image" style="position:relative;">
+            {% if d.animal_image %}
+              <img src="{{ d.animal_image.url }}" alt="{{ d.animal_name }}" loading="lazy"/>
+              <div class="alert-card-image-overlay"></div>
+            {% else %}
+              <div class="alert-card-image-placeholder">🐾</div>
+            {% endif %}
+            <div class="alert-card-img-badges">
+              <span class="conf-badge {{ conf_class }}">MID · {{ d.confidence|floatformat:0 }}%</span>
+              {% if dist is not None %}
+              <span class="dist-badge">📍 {{ dist }} km</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="alert-card-body">
+            <div class="alert-animal-row">
+              <div class="alert-animal-name">{{ d.animal_name }}</div>
+              <span class="pill amber">~ MED</span>
+            </div>
+            <div class="alert-time">🕐 {{ d.detected_at|date:"d M Y, H:i" }}</div>
+            {% if d.location_address %}
+            <div class="alert-location">
+              <span class="alert-location-icon">📍</span>
+              <span class="alert-location-text">{{ d.location_address }}</span>
+            </div>
+            {% elif d.latitude %}
+            <div class="alert-location">
+              <span class="alert-location-icon">📍</span>
+              <span class="alert-location-text">{{ d.latitude }}, {{ d.longitude }}</span>
+            </div>
+            {% endif %}
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label">
+                <span class="conf-bar-text">Detection Confidence</span>
+                <span class="conf-bar-pct {{ conf_class }}">{{ d.confidence|floatformat:1 }}%</span>
+              </div>
+              <div class="conf-bar-track">
+                <div class="conf-bar-fill {{ conf_class }}" style="width: {{ d.confidence|floatformat:0 }}%;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="alert-card-footer">
+            <span class="alert-id">#DET-{{ d.id|stringformat:"04d" }}</span>
+            <button
+              class="view-map-btn"
+              onclick="openMapModal('{{ d.animal_name }}', {{ d.latitude|default:'null' }}, {{ d.longitude|default:'null' }}, '{{ dist|default:"N/A" }}', '{{ d.confidence|floatformat:1 }}', '{{ d.detected_at|date:"d M Y, H:i" }}')"
+            >
+              <i class="fa-solid fa-map-location-dot"></i> View on Map
+            </button>
+          </div>
+        </div>
+        {% endwith %}
+      {% else %}
+        {% with conf_class="low" %}
+        <div
+          class="alert-card conf-{{ conf_class }}"
+          data-lat="{{ d.latitude|default:'null' }}"
+          data-lng="{{ d.longitude|default:'null' }}"
+          data-name="{{ d.animal_name }}"
+          style="animation-delay:{{ forloop.counter0 }}00ms;"
+        >
+          <div class="alert-card-accent"></div>
+          <div class="alert-card-image" style="position:relative;">
+            {% if d.animal_image %}
+              <img src="{{ d.animal_image.url }}" alt="{{ d.animal_name }}" loading="lazy"/>
+              <div class="alert-card-image-overlay"></div>
+            {% else %}
+              <div class="alert-card-image-placeholder">🌿</div>
+            {% endif %}
+            <div class="alert-card-img-badges">
+              <span class="conf-badge {{ conf_class }}">LOW · {{ d.confidence|floatformat:0 }}%</span>
+              {% if dist is not None %}
+              <span class="dist-badge">📍 {{ dist }} km</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="alert-card-body">
+            <div class="alert-animal-row">
+              <div class="alert-animal-name">{{ d.animal_name }}</div>
+              <span class="pill green">○ LOW</span>
+            </div>
+            <div class="alert-time">🕐 {{ d.detected_at|date:"d M Y, H:i" }}</div>
+            {% if d.location_address %}
+            <div class="alert-location">
+              <span class="alert-location-icon">📍</span>
+              <span class="alert-location-text">{{ d.location_address }}</span>
+            </div>
+            {% elif d.latitude %}
+            <div class="alert-location">
+              <span class="alert-location-icon">📍</span>
+              <span class="alert-location-text">{{ d.latitude }}, {{ d.longitude }}</span>
+            </div>
+            {% endif %}
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label">
+                <span class="conf-bar-text">Detection Confidence</span>
+                <span class="conf-bar-pct {{ conf_class }}">{{ d.confidence|floatformat:1 }}%</span>
+              </div>
+              <div class="conf-bar-track">
+                <div class="conf-bar-fill {{ conf_class }}" style="width: {{ d.confidence|floatformat:0 }}%;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="alert-card-footer">
+            <span class="alert-id">#DET-{{ d.id|stringformat:"04d" }}</span>
+            <button
+              class="view-map-btn"
+              onclick="openMapModal('{{ d.animal_name }}', {{ d.latitude|default:'null' }}, {{ d.longitude|default:'null' }}, '{{ dist|default:"N/A" }}', '{{ d.confidence|floatformat:1 }}', '{{ d.detected_at|date:"d M Y, H:i" }}')"
+            >
+              <i class="fa-solid fa-map-location-dot"></i> View on Map
+            </button>
+          </div>
+        </div>
+        {% endwith %}
+      {% endif %}
+
+      {% endwith %}
+      {% empty %}
+      <div class="empty-state">
+        <div class="empty-icon">{% if search_query %}🔍{% else %}📡{% endif %}</div>
+        <div class="empty-title">{% if search_query %}No Results Found{% else %}No Alerts Nearby{% endif %}</div>
+        <div class="empty-sub">
+          {% if search_query %}
+            No wildlife detections matched "{{ search_query }}" within your 10km radius. Try a different animal name.
+          {% else %}
+            No wildlife detections found within 10 km of your location. The area appears calm right now.
+          {% endif %}
+        </div>
+        {% if search_query %}
+          <a href="{% url 'user_alerts_list' %}" class="empty-btn">✕ Clear Search</a>
+        {% endif %}
+      </div>
+      {% endfor %}
+
+    </div><!-- /alerts-grid -->
+
+  </div><!-- /main -->
+  </div><!-- /main-wrap -->
+
+</div><!-- /shell -->
+
+<!-- ══════════ MAP MODAL ══════════ -->
+<div class="modal-backdrop" id="mapModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Detection Location</div>
+      <button class="modal-close" onclick="closeMapModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-map-frame" id="modalMapFrame">
+        <!-- Map iframe injected by JS -->
+      </div>
+      <div class="modal-info" id="modalInfo"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ALL ALERTS MAP MODAL -->
+<div class="modal-backdrop" id="allMapModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">All Nearby Alerts — Map View</div>
+      <button class="modal-close" onclick="closeAllMapModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-map-frame" id="allModalMapFrame"></div>
+      <div style="margin-top:0.75rem;font-family:'JetBrains Mono',monospace;font-size:0.58rem;color:var(--muted);letter-spacing:0.08em;">
+        📡 Showing all {{ total_nearby }} detection{{ total_nearby|pluralize }} within 10km of your location
+        {% if user_lat %} · Your location: {{ user_lat }}, {{ user_lng }}{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── Live clock ── */
+  function tick() {
+    const n = new Date();
+    document.getElementById('liveClock').textContent =
+      String(n.getHours()).padStart(2,'0') + ':' +
+      String(n.getMinutes()).padStart(2,'0') + ':' +
+      String(n.getSeconds()).padStart(2,'0');
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* ── Sidebar toggle ── */
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebarOverlay');
+  const hamburger = document.getElementById('hamburgerBtn');
+  function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show');    document.body.style.overflow = 'hidden'; }
+  function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); document.body.style.overflow = ''; }
+  hamburger.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+  overlay.addEventListener('click', closeSidebar);
+
+  /* ── Search clear ── */
+  const searchInput = document.getElementById('searchInput');
+  const searchClear = document.getElementById('searchClear');
+  searchInput.addEventListener('input', () => {
+    searchClear.classList.toggle('show', searchInput.value.length > 0);
+  });
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    searchClear.classList.remove('show');
+    document.getElementById('searchForm').submit();
+  });
+
+  /* ── Count high-confidence alerts ── */
+  const cards = document.querySelectorAll('.alert-card');
+  let highCount = 0;
+  cards.forEach(c => {
+    const conf = parseFloat(c.dataset.conf || 0);
+    if (conf >= 75) highCount++;
+  });
+  document.getElementById('highConfCount').textContent = highCount;
+
+  /* ── Single alert map modal ── */
+  function openMapModal(name, lat, lng, dist, conf, time) {
+    const modal = document.getElementById('mapModal');
+    document.getElementById('modalTitle').textContent = '📍 ' + name + ' Detection';
+
+    const frame = document.getElementById('modalMapFrame');
+    if (lat && lng && lat !== 'null' && lng !== 'null') {
+      frame.innerHTML = `<iframe
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(lng)-0.05},${parseFloat(lat)-0.05},${parseFloat(lng)+0.05},${parseFloat(lat)+0.05}&layer=mapnik&marker=${lat},${lng}"
+        style="width:100%;height:100%;border:none;"
+        loading="lazy"
+        title="Detection location map">
+      </iframe>`;
+    } else {
+      frame.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.1em;flex-direction:column;gap:0.5rem;"><span style="font-size:2rem;opacity:0.4">🗺️</span>Location coordinates unavailable</div>`;
+    }
+
+    document.getElementById('modalInfo').innerHTML = `
+      <div class="modal-info-item">
+        <div class="modal-info-label">Animal</div>
+        <div class="modal-info-value">${name}</div>
+      </div>
+      <div class="modal-info-item">
+        <div class="modal-info-label">Distance</div>
+        <div class="modal-info-value">${dist !== 'None' && dist !== 'N/A' ? dist + ' km' : 'N/A'}</div>
+      </div>
+      <div class="modal-info-item">
+        <div class="modal-info-label">Confidence</div>
+        <div class="modal-info-value">${conf}%</div>
+      </div>
+      <div class="modal-info-item">
+        <div class="modal-info-label">Detected At</div>
+        <div class="modal-info-value">${time}</div>
+      </div>
+      <div class="modal-info-item">
+        <div class="modal-info-label">Latitude</div>
+        <div class="modal-info-value">${lat !== 'null' ? parseFloat(lat).toFixed(5) : 'N/A'}</div>
+      </div>
+      <div class="modal-info-item">
+        <div class="modal-info-label">Longitude</div>
+        <div class="modal-info-value">${lng !== 'null' ? parseFloat(lng).toFixed(5) : 'N/A'}</div>
+      </div>
+    `;
+
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMapModal() {
+    document.getElementById('mapModal').classList.remove('open');
+    document.getElementById('modalMapFrame').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  /* ── View All on Map ── */
+  document.getElementById('viewAllMapBtn').addEventListener('click', function() {
+    const modal = document.getElementById('allMapModal');
+    const frame = document.getElementById('allModalMapFrame');
+
+    const userLat = {{ user_lat|default:"null" }};
+    const userLng = {{ user_lng|default:"null" }};
+
+    if (userLat && userLng) {
+      frame.innerHTML = `<iframe
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${userLng-0.12},${userLat-0.12},${userLng+0.12},${userLat+0.12}&layer=mapnik&marker=${userLat},${userLng}"
+        style="width:100%;height:100%;border:none;"
+        loading="lazy"
+        title="All nearby alerts map">
+      </iframe>`;
+    } else {
+      frame.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:0.75rem;letter-spacing:0.1em;flex-direction:column;gap:0.5rem;"><span style="font-size:2rem;opacity:0.4">🗺️</span>Enable location to see map</div>`;
+    }
+
+    modal.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  });
+
+  function closeAllMapModal() {
+    document.getElementById('allMapModal').classList.remove('open');
+    document.getElementById('allModalMapFrame').innerHTML = '';
+    document.body.style.overflow = '';
+  }
+
+  /* Close modals on backdrop click */
+  document.getElementById('mapModal').addEventListener('click', function(e) {
+    if (e.target === this) closeMapModal();
+  });
+  document.getElementById('allMapModal').addEventListener('click', function(e) {
+    if (e.target === this) closeAllMapModal();
+  });
+
+  /* Close on Escape */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { closeMapModal(); closeAllMapModal(); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – SOS Submitted</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg:#0d1a07; --bg2:#111f09; --surface:#192d0c; --border:rgba(110,200,40,0.13);
+      --kiwi:#7dc832; --kiwi-dim:#4f8a18; --kiwi-glow:rgba(125,200,50,0.18);
+      --white:#e8f5d8; --muted:#6a8a55; --red:#f05555;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--white);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;}
+    body::before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 60% at 50% 0%,rgba(125,200,50,0.08) 0%,transparent 60%);}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes sosPulse{0%,100%{box-shadow:0 0 0 0 rgba(125,200,50,0.4)}50%{box-shadow:0 0 0 16px rgba(125,200,50,0)}}
+    @keyframes checkPop{0%{transform:scale(0) rotate(-20deg);opacity:0}80%{transform:scale(1.15) rotate(3deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+    .card{
+      background:var(--bg2);border:1px solid var(--border);border-radius:24px;
+      padding:3rem 2.5rem;max-width:460px;width:100%;text-align:center;
+      animation:fadeUp 0.5s ease forwards;
+      position:relative;overflow:hidden;
+    }
+    .card::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:3px;
+      background:linear-gradient(90deg,var(--kiwi-dim),var(--kiwi));
+    }
+    .check-ring{
+      width:80px;height:80px;border-radius:50%;margin:0 auto 1.5rem;
+      background:rgba(125,200,50,0.12);border:2px solid rgba(125,200,50,0.35);
+      display:flex;align-items:center;justify-content:center;font-size:2.4rem;
+      animation:checkPop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.3s both, sosPulse 2.5s ease-in-out 1s infinite;
+    }
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.1em;color:var(--muted);margin-bottom:1.5rem;}
+    .logo span{color:var(--kiwi);}
+    .title{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:0.06em;color:var(--kiwi);margin-bottom:0.5rem;}
+    .sub{font-size:0.9rem;color:var(--muted);line-height:1.65;margin-bottom:2rem;}
+    .ref{
+      font-family:'JetBrains Mono',monospace;font-size:0.62rem;letter-spacing:0.1em;
+      color:var(--kiwi);background:rgba(125,200,50,0.08);border:1px solid rgba(125,200,50,0.2);
+      border-radius:8px;padding:0.65rem 1rem;margin-bottom:2rem;display:inline-block;
+    }
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:0.55rem;
+      padding:0.85rem 2rem;border-radius:12px;text-decoration:none;
+      background:var(--kiwi);color:#0d1a07;font-weight:700;font-size:0.95rem;
+      transition:background 0.2s,transform 0.15s;
+    }
+    .btn:hover{background:#6bb82a;transform:translateY(-2px);}
+    .btn-sec{
+      display:block;margin-top:0.85rem;font-size:0.82rem;color:var(--muted);text-decoration:none;
+      transition:color 0.2s;
+    }
+    .btn-sec:hover{color:var(--white);}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">WILD<span>GUARD</span> // Emergency System</div>
+    <div class="check-ring">✅</div>
+    <div class="title">Report Submitted</div>
+    <p class="sub">
+      Your SOS emergency report has been received. Forest authorities and the WildGuard response team have been notified and will act immediately.
+    </p>
+    <div class="ref">// CASE REF · WG-SOS-{{ today|date:"Ymd-His" }}</div>
+    <br>
+    <a href="{% url 'user_home' %}" class="btn">
+      <i class="fa-solid fa-house"></i> Return to Dashboard
+    </a>
+    <a href="{% url 'sos_report' %}" class="btn-sec">Submit another report</a>
+  </div>
+</body>
+</html>

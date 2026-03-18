@@ -1,0 +1,888 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – My Reports</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --bg:        #0d1a07;
+      --bg2:       #111f09;
+      --bg3:       #16260c;
+      --surface:   #192d0c;
+      --surface2:  #1f3710;
+      --border:    rgba(110,200,40,0.13);
+      --border2:   rgba(110,200,40,0.22);
+      --kiwi:      #7dc832;
+      --kiwi-dim:  #4f8a18;
+      --kiwi-glow: rgba(125,200,50,0.18);
+      --kiwi-text: #a8e060;
+      --white:     #e8f5d8;
+      --white2:    #c4dfa8;
+      --muted:     #6a8a55;
+      --red:       #f05555;
+      --red-dim:   rgba(240,85,85,0.12);
+      --amber:     #f0a020;
+      --amber-dim: rgba(240,160,32,0.12);
+      --blue:      #4488ff;
+      --blue-dim:  rgba(68,136,255,0.12);
+      --sidebar-w: 260px;
+      --topbar-h:  68px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% -10%, rgba(125,200,50,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 110%, rgba(125,200,50,0.05) 0%, transparent 55%);
+    }
+    .noise {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    @keyframes fadeUp   { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+    @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes sosPulse { 0%,100%{box-shadow:0 0 0 0 rgba(240,85,85,0.5)} 50%{box-shadow:0 0 0 12px rgba(240,85,85,0)} }
+    @keyframes spin     { to{transform:rotate(360deg)} }
+
+    /* ═══ LAYOUT ═══ */
+    .shell { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+    /* ═══ SIDEBAR ═══ */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 1.4rem 1.4rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      text-decoration: none;
+    }
+    .sidebar-logo-mark {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--kiwi), var(--kiwi-dim));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; flex-shrink: 0;
+      box-shadow: 0 0 20px var(--kiwi-glow);
+    }
+    .sidebar-logo-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem; letter-spacing: 0.08em;
+      color: var(--white); line-height: 1;
+    }
+    .sidebar-logo-text span { color: var(--kiwi); }
+    .sidebar-logo-tagline {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.5rem; letter-spacing: 0.15em; color: var(--muted);
+      text-transform: uppercase; margin-top: 2px;
+    }
+
+    .sidebar-section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.5rem; letter-spacing: 0.2em; color: var(--muted);
+      text-transform: uppercase; padding: 1.2rem 1.4rem 0.5rem;
+      opacity: 0.6;
+    }
+
+    .nav-links { display: flex; flex-direction: column; gap: 2px; padding: 0 0.8rem; }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.85rem; border-radius: 10px;
+      text-decoration: none; color: var(--muted);
+      font-size: 0.88rem; font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+    }
+    .nav-link:hover { background: var(--surface); color: var(--white2); }
+    .nav-link.active { background: rgba(125,200,50,0.1); color: var(--kiwi-text); }
+    .nav-link.active::before {
+      content: ''; position: absolute; left: 0; top: 20%; bottom: 20%;
+      width: 3px; border-radius: 0 3px 3px 0; background: var(--kiwi);
+    }
+    .nav-icon { font-size: 1.05rem; width: 22px; text-align: center; flex-shrink: 0; }
+
+    .sidebar-sos {
+      margin: 1rem 0.8rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.9rem 1rem; border-radius: 12px;
+      background: rgba(240,85,85,0.08);
+      border: 1px solid rgba(240,85,85,0.25);
+      text-decoration: none; color: var(--red);
+      font-weight: 700; font-size: 0.88rem;
+      transition: background 0.15s, transform 0.15s;
+      position: relative; overflow: hidden;
+    }
+    .sidebar-sos:hover { background: rgba(240,85,85,0.14); transform: translateY(-1px); }
+    .sidebar-sos-icon {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: var(--red); display: flex; align-items: center; justify-content: center;
+      font-size: 0.95rem;
+      animation: sosPulse 2.5s ease-in-out infinite;
+    }
+    .sidebar-sos-info { flex: 1; min-width: 0; }
+    .sidebar-sos-title { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 0.08em; }
+    .sidebar-sos-sub { font-size: 0.65rem; color: rgba(240,85,85,0.7); font-weight: 400; margin-top: 1px; }
+
+    .sidebar-user {
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.2rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      border: 2px solid var(--border2);
+      background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0; overflow: hidden;
+      position: relative;
+    }
+    .sidebar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .sidebar-avatar-dot {
+      position: absolute; bottom: 0; right: 0;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #4ade80; border: 2px solid var(--bg2);
+      animation: pulse 2s infinite;
+    }
+    .sidebar-user-info { flex: 1; min-width: 0; }
+    .sidebar-user-name { font-weight: 700; font-size: 0.84rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.1em; color: var(--kiwi); text-transform: uppercase;
+    }
+
+    /* ═══ TOPBAR ═══ */
+    .topbar {
+      position: fixed; top: 0;
+      left: var(--sidebar-w); right: 0;
+      height: var(--topbar-h);
+      background: rgba(13,26,7,0.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 2rem;
+      z-index: 90;
+      transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .topbar-left { display: flex; flex-direction: column; gap: 2px; }
+    .topbar-breadcrumb {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      letter-spacing: 0.18em; color: var(--muted); text-transform: uppercase;
+    }
+    .topbar-breadcrumb span { color: var(--kiwi); }
+    .topbar-title { font-weight: 700; font-size: 1.05rem; color: var(--white); }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+      letter-spacing: 0.1em; color: var(--muted);
+      padding: 0.3rem 0.75rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .topbar-btn {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; cursor: pointer; text-decoration: none; color: var(--white);
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .topbar-btn:hover { background: var(--surface2); border-color: var(--border2); }
+    .topbar-status {
+      display: flex; align-items: center; gap: 0.45rem;
+      padding: 0.3rem 0.75rem; background: rgba(125,200,50,0.08);
+      border: 1px solid rgba(125,200,50,0.2); border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      color: var(--kiwi); letter-spacing: 0.05em;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--kiwi); animation: pulse 2s infinite; }
+    .hamburger {
+      display: none; flex-direction: column; gap: 5px; cursor: pointer;
+      padding: 0.4rem; border: none; background: none;
+    }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--white2); border-radius: 2px; transition: all 0.3s; }
+
+    /* ═══ MAIN ═══ */
+    .main-wrap {
+      margin-left: var(--sidebar-w);
+      padding-top: var(--topbar-h);
+      min-height: 100vh;
+      transition: margin-left 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .main { padding: 2rem; max-width: 1280px; }
+
+    /* ═══ PAGE HEADER BANNER ═══ */
+    .page-banner {
+      background: linear-gradient(135deg, var(--surface) 0%, #1a2f0c 50%, var(--bg2) 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1.8rem 2.2rem;
+      margin-bottom: 2rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+      position: relative; overflow: hidden;
+      animation: fadeUp 0.4s ease forwards;
+    }
+    .page-banner::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .page-banner::after {
+      content: '📋'; position: absolute; right: 2rem; top: 50%; transform: translateY(-50%);
+      font-size: 7rem; opacity: 0.05; pointer-events: none;
+    }
+    .banner-left { position: relative; z-index: 1; }
+    .banner-eyebrow {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 0.4rem;
+    }
+    .banner-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      letter-spacing: 0.06em; color: var(--white); line-height: 1;
+      margin-bottom: 0.4rem;
+    }
+    .banner-sub { font-size: 0.84rem; color: var(--muted); line-height: 1.5; }
+    .banner-right { display: flex; gap: 1rem; position: relative; z-index: 1; flex-shrink: 0; }
+    .banner-stat {
+      background: rgba(0,0,0,0.25); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem 1.3rem; text-align: center; min-width: 80px;
+    }
+    .banner-stat-num {
+      font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem;
+      letter-spacing: 0.05em; color: var(--white); line-height: 1;
+    }
+    .banner-stat-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.48rem;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--muted); margin-top: 4px;
+    }
+
+    /* ═══ FILTER BAR ═══ */
+    .filter-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .filter-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase;
+      margin-right: 0.25rem;
+    }
+    .filter-btn {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 0.38rem 0.9rem; border-radius: 20px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: var(--border2); color: var(--white2); }
+    .filter-btn.active { background: rgba(125,200,50,0.1); border-color: rgba(125,200,50,0.3); color: var(--kiwi); }
+    .filter-btn.red-f.active    { background: var(--red-dim); border-color: rgba(240,85,85,0.3); color: var(--red); }
+    .filter-btn.amber-f.active  { background: var(--amber-dim); border-color: rgba(240,160,32,0.3); color: var(--amber); }
+    .filter-btn.blue-f.active   { background: var(--blue-dim); border-color: rgba(68,136,255,0.3); color: var(--blue); }
+    .filter-spacer { flex: 1; }
+    .report-count {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      letter-spacing: 0.1em; color: var(--muted);
+    }
+    .report-count span { color: var(--kiwi); }
+
+    /* ═══ SECTION HEADER ═══ */
+    .section-hd {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .section-hd-left { display: flex; align-items: center; gap: 0.65rem; }
+    .section-hd-line { width: 4px; height: 18px; background: var(--kiwi); border-radius: 4px; }
+    .section-title { font-weight: 700; font-size: 1rem; }
+    .section-meta {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase;
+    }
+    .section-link {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
+      letter-spacing: 0.08em; color: var(--kiwi); text-decoration: none;
+      display: flex; align-items: center; gap: 0.3rem; opacity: 0.8;
+      transition: opacity 0.2s;
+    }
+    .section-link:hover { opacity: 1; }
+
+    /* ═══ REPORTS GRID ═══ */
+    .reports-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1.2rem;
+    }
+
+    .report-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 18px; overflow: hidden;
+      display: flex; flex-direction: column;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      animation: fadeUp 0.5s ease forwards; opacity: 0;
+      position: relative;
+    }
+    .report-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+      border-color: var(--border2);
+    }
+    .report-card-top-bar {
+      height: 3px;
+    }
+    .report-card.sev-critical .report-card-top-bar { background: var(--red); }
+    .report-card.sev-high     .report-card-top-bar { background: var(--amber); }
+    .report-card.sev-medium   .report-card-top-bar { background: var(--blue); }
+    .report-card.sev-low      .report-card-top-bar { background: var(--kiwi); }
+
+    .report-card-body { padding: 1.3rem 1.4rem; flex: 1; }
+
+    .report-card-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 0.75rem; margin-bottom: 0.9rem;
+    }
+    .report-card-icon-wrap {
+      width: 46px; height: 46px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .report-card.sev-critical .report-card-icon-wrap { background: var(--red-dim); border: 1px solid rgba(240,85,85,0.2); }
+    .report-card.sev-high     .report-card-icon-wrap { background: var(--amber-dim); border: 1px solid rgba(240,160,32,0.2); }
+    .report-card.sev-medium   .report-card-icon-wrap { background: var(--blue-dim); border: 1px solid rgba(68,136,255,0.2); }
+    .report-card.sev-low      .report-card-icon-wrap { background: rgba(125,200,50,0.08); border: 1px solid rgba(125,200,50,0.2); }
+
+    .report-card-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+      font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 3px 8px; border-radius: 20px;
+    }
+    .pill.red    { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(240,85,85,0.25); }
+    .pill.amber  { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(240,160,32,0.25); }
+    .pill.green  { background: rgba(125,200,50,0.1); color: var(--kiwi); border: 1px solid rgba(125,200,50,0.25); }
+    .pill.blue   { background: var(--blue-dim);  color: var(--blue);  border: 1px solid rgba(68,136,255,0.25); }
+    .pill.purple { background: rgba(150,100,255,0.12); color: #c084fc; border: 1px solid rgba(150,100,255,0.25); }
+    .pill.grey   { background: rgba(106,138,85,0.12); color: var(--muted); border: 1px solid rgba(106,138,85,0.2); }
+
+    .report-animal-name {
+      font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem;
+      letter-spacing: 0.06em; color: var(--white); line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+    .report-id {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
+      letter-spacing: 0.1em; color: var(--muted);
+    }
+
+    .report-desc {
+      font-size: 0.8rem; color: var(--muted); line-height: 1.6;
+      margin-bottom: 1rem;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .report-meta-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;
+      margin-bottom: 1rem;
+    }
+    .report-meta-item {}
+    .report-meta-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.48rem;
+      letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-bottom: 2px;
+    }
+    .report-meta-value { font-size: 0.78rem; font-weight: 600; color: var(--white2); }
+
+    .report-location {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 0.75rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 1rem;
+      font-size: 0.75rem; color: var(--muted);
+    }
+    .report-location-icon { font-size: 0.85rem; flex-shrink: 0; }
+    .report-location-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .report-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.9rem 1.4rem;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.15);
+    }
+    .report-time {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
+      letter-spacing: 0.08em; color: var(--muted);
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .report-status-wrap { display: flex; align-items: center; gap: 0.5rem; }
+    .status-indicator { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .status-indicator.pending   { background: var(--amber); box-shadow: 0 0 6px rgba(240,160,32,0.5); animation: pulse 2s infinite; }
+    .status-indicator.reviewing { background: var(--blue);  box-shadow: 0 0 6px rgba(68,136,255,0.5); animation: pulse 2s infinite; }
+    .status-indicator.resolved  { background: var(--kiwi);  box-shadow: 0 0 6px var(--kiwi-glow); }
+    .status-indicator.false_alarm { background: var(--muted); }
+
+    /* ═══ EMPTY STATE ═══ */
+    .empty-state {
+      grid-column: 1 / -1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 4rem 2rem; text-align: center;
+      animation: fadeUp 0.5s ease forwards;
+    }
+    .empty-icon {
+      font-size: 3.5rem; margin-bottom: 1rem; opacity: 0.5;
+    }
+    .empty-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem; letter-spacing: 0.08em; color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .empty-sub { font-size: 0.82rem; color: var(--muted); line-height: 1.6; max-width: 320px; }
+    .empty-btn {
+      margin-top: 1.4rem;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.72rem 1.4rem;
+      background: var(--red); color: #fff;
+      border-radius: 10px; text-decoration: none;
+      font-size: 0.88rem; font-weight: 700;
+      transition: background 0.15s, transform 0.15s;
+    }
+    .empty-btn:hover { background: #d94444; transform: scale(1.02); }
+
+    /* ═══ SUMMARY STRIP ═══ */
+    .summary-strip {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+      margin-bottom: 1.8rem;
+      animation: fadeUp 0.45s ease forwards;
+    }
+    .summary-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem 1.1rem;
+      display: flex; align-items: center; gap: 0.85rem;
+    }
+    .summary-card-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; flex-shrink: 0;
+    }
+    .summary-card.s-total .summary-card-icon  { background: rgba(125,200,50,0.1); border: 1px solid rgba(125,200,50,0.2); }
+    .summary-card.s-pending .summary-card-icon { background: var(--amber-dim); border: 1px solid rgba(240,160,32,0.2); }
+    .summary-card.s-review .summary-card-icon  { background: var(--blue-dim); border: 1px solid rgba(68,136,255,0.2); }
+    .summary-card.s-resolved .summary-card-icon { background: rgba(125,200,50,0.1); border: 1px solid rgba(125,200,50,0.2); }
+    .summary-card-num {
+      font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem;
+      letter-spacing: 0.04em; line-height: 1;
+    }
+    .summary-card.s-total .summary-card-num    { color: var(--kiwi); }
+    .summary-card.s-pending .summary-card-num  { color: var(--amber); }
+    .summary-card.s-review .summary-card-num   { color: var(--blue); }
+    .summary-card.s-resolved .summary-card-num { color: var(--kiwi); }
+    .summary-card-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
+      letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 2px;
+    }
+
+    /* ═══ SIDEBAR OVERLAY ═══ */
+    .sidebar-overlay {
+      display: none; position: fixed; inset: 0; z-index: 99;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+    }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 0px; }
+      .sidebar { transform: translateX(-260px); width: 260px; }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+      .sidebar-overlay.show { opacity: 1; pointer-events: auto; }
+      .topbar { left: 0; }
+      .main-wrap { margin-left: 0; }
+      .hamburger { display: flex; }
+      .summary-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 700px) {
+      .main { padding: 1.2rem; }
+      .page-banner { flex-direction: column; align-items: flex-start; }
+      .banner-right { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
+      .topbar { padding: 0 1.1rem; }
+      .reports-grid { grid-template-columns: 1fr; }
+      .topbar-status { display: none; }
+    }
+    @media (max-width: 480px) {
+      .summary-strip { grid-template-columns: 1fr 1fr; }
+      .filter-bar { gap: 0.5rem; }
+      .topbar-time { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="shell">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="sidebar" id="sidebar">
+
+    <a href="{% url 'user_home' %}" class="sidebar-logo">
+      <div class="sidebar-logo-mark">🐾</div>
+      <div>
+        <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+        <div class="sidebar-logo-tagline">// Wildlife Protection Network</div>
+      </div>
+    </a>
+
+    <div class="sidebar-section-label">// Navigation</div>
+    <nav class="nav-links">
+      <a href="{% url 'user_home' %}" class="nav-link">
+        <span class="nav-icon">🏠</span> Dashboard
+      </a>
+      <a href="{% url 'user_alerts_list' %}" class="nav-link">
+        <span class="nav-icon">🔔</span> Wildlife Alerts
+      </a>
+      <a href="{% url 'user_danger_zone' %}" class="nav-link">
+        <span class="nav-icon">🗺️</span> Danger Zone Map
+      </a>
+      <a href="{% url 'user_report' %}" class="nav-link active">
+        <span class="nav-icon">📋</span> My Reports
+      </a>
+    </nav>
+
+    <div class="sidebar-section-label" style="margin-top:0.5rem;">// Account</div>
+    <nav class="nav-links">
+      <a href="/user_profile/" class="nav-link">
+        <span class="nav-icon">👤</span> My Profile
+      </a>
+    </nav>
+
+    <a href="{% url 'sos_report' %}" class="sidebar-sos">
+      <div class="sidebar-sos-icon">🚨</div>
+      <div class="sidebar-sos-info">
+        <div class="sidebar-sos-title">SOS Emergency</div>
+        <div class="sidebar-sos-sub">Report instantly</div>
+      </div>
+    </a>
+
+    <div class="sidebar-user">
+      <div class="sidebar-avatar">
+        {% if user.profile_image %}
+          <img src="{{ user.profile_image.url }}" alt="{{ user.name }}"/>
+        {% else %}🌿{% endif %}
+        <div class="sidebar-avatar-dot"></div>
+      </div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">{{ user.name|default:"Wildlife Watcher" }}</div>
+        <div class="sidebar-user-role">WG Citizen</div>
+      </div>
+    </div>
+
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- ══════════ TOPBAR ══════════ -->
+  <header class="topbar">
+    <div style="display:flex;align-items:center;gap:1rem;">
+      <button class="hamburger" id="hamburgerBtn" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-left">
+        <div class="topbar-breadcrumb">WildGuard / <span>My Reports</span></div>
+        <div class="topbar-title">My SOS Reports 📋</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-status">
+        <span class="status-dot"></span>
+        System Online
+      </div>
+      <div class="topbar-time" id="liveClock">00:00:00</div>
+      <a href="/user_profile/" class="topbar-btn">👤</a>
+      <a href="/logout/" class="topbar-btn">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <div class="main-wrap">
+  <div class="main">
+
+    <!-- PAGE BANNER -->
+    <div class="page-banner">
+      <div class="banner-left">
+        <div class="banner-eyebrow">// WildGuard · Citizen Reports</div>
+        <div class="banner-title">My Reports</div>
+        <div class="banner-sub">All SOS emergency reports you've submitted to forest authorities.</div>
+      </div>
+      <div class="banner-right">
+        <div class="banner-stat">
+          <div class="banner-stat-num">{{ reports.count }}</div>
+          <div class="banner-stat-label">Total</div>
+        </div>
+        <div class="banner-stat">
+          <div class="banner-stat-num">{{ reports|length }}</div>
+          <div class="banner-stat-label">Reports</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY STRIP -->
+    {% with total=reports.count pending=reports|dictsort:"status" %}
+    <div class="summary-strip">
+      <div class="summary-card s-total">
+        <div class="summary-card-icon">📋</div>
+        <div>
+          <div class="summary-card-num">{{ reports.count }}</div>
+          <div class="summary-card-label">All Reports</div>
+        </div>
+      </div>
+      <div class="summary-card s-pending">
+        <div class="summary-card-icon">⏳</div>
+        <div>
+          <div class="summary-card-num">
+            {% with cnt=0 %}
+              {% for r in reports %}{% if r.status == 'pending' %}{% with cnt=cnt|add:1 %}{% endwith %}{% endif %}{% endfor %}
+              {{ reports|length }}
+            {% endwith %}
+          </div>
+          <div class="summary-card-label">Pending</div>
+        </div>
+      </div>
+      <div class="summary-card s-review">
+        <div class="summary-card-icon">🔍</div>
+        <div>
+          <div class="summary-card-num" id="reviewingCount">—</div>
+          <div class="summary-card-label">Reviewing</div>
+        </div>
+      </div>
+      <div class="summary-card s-resolved">
+        <div class="summary-card-icon">✅</div>
+        <div>
+          <div class="summary-card-num" id="resolvedCount">—</div>
+          <div class="summary-card-label">Resolved</div>
+        </div>
+      </div>
+    </div>
+    {% endwith %}
+
+    <!-- SECTION HEADER + FILTER -->
+    <div class="section-hd">
+      <div class="section-hd-left">
+        <div class="section-hd-line"></div>
+        <div class="section-title">All Reports</div>
+        <div class="section-meta">— your submissions</div>
+      </div>
+      <a href="{% url 'sos_report' %}" class="section-link">+ New Report →</a>
+    </div>
+
+    <div class="filter-bar">
+      <span class="filter-label">Filter:</span>
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn amber-f" data-filter="pending">Pending</button>
+      <button class="filter-btn blue-f" data-filter="reviewing">Reviewing</button>
+      <button class="filter-btn" data-filter="resolved">Resolved</button>
+      <button class="filter-btn red-f" data-filter="false_alarm">False Alarm</button>
+      <div class="filter-spacer"></div>
+      <div class="report-count">Showing <span id="visibleCount">{{ reports.count }}</span> of {{ reports.count }}</div>
+    </div>
+
+    <!-- REPORTS GRID -->
+    <div class="reports-grid" id="reportsGrid">
+
+      {% for report in reports %}
+      {% with sev=report.severity stat=report.status %}
+      <div
+        class="report-card sev-{{ sev }}"
+        data-status="{{ stat }}"
+        data-severity="{{ sev }}"
+        style="animation-delay: {{ forloop.counter0|add:'1' }}00ms; opacity:0;"
+      >
+        <div class="report-card-top-bar"></div>
+        <div class="report-card-body">
+
+          <!-- HEADER ROW -->
+          <div class="report-card-header">
+            <div class="report-card-icon-wrap">
+              {% if sev == 'critical' %}🚨
+              {% elif sev == 'high' %}⚠️
+              {% elif sev == 'medium' %}🔶
+              {% else %}📌{% endif %}
+            </div>
+            <div class="report-card-badges">
+              <!-- Severity pill -->
+              {% if sev == 'critical' %}
+                <span class="pill red">● Critical</span>
+              {% elif sev == 'high' %}
+                <span class="pill amber">● High</span>
+              {% elif sev == 'medium' %}
+                <span class="pill blue">● Medium</span>
+              {% else %}
+                <span class="pill green">● Low</span>
+              {% endif %}
+              <!-- Status pill -->
+              {% if stat == 'pending' %}
+                <span class="pill amber">⏳ Pending</span>
+              {% elif stat == 'reviewing' %}
+                <span class="pill blue">🔍 Reviewing</span>
+              {% elif stat == 'resolved' %}
+                <span class="pill green">✓ Resolved</span>
+              {% else %}
+                <span class="pill grey">✗ False Alarm</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- ANIMAL NAME + ID -->
+          <div class="report-animal-name">{{ report.animal_name }}</div>
+          <div class="report-id">#RPT-{{ report.id|stringformat:"04d" }}</div>
+
+          <!-- DESCRIPTION -->
+          <p class="report-desc" style="margin-top:0.6rem;">{{ report.description }}</p>
+
+          <!-- META GRID -->
+          <div class="report-meta-grid">
+            <div class="report-meta-item">
+              <div class="report-meta-label">Severity</div>
+              <div class="report-meta-value">{{ report.get_severity_display }}</div>
+            </div>
+            <div class="report-meta-item">
+              <div class="report-meta-label">Status</div>
+              <div class="report-meta-value">{{ report.get_status_display }}</div>
+            </div>
+            {% if report.reporter_phone %}
+            <div class="report-meta-item">
+              <div class="report-meta-label">Contact</div>
+              <div class="report-meta-value">{{ report.reporter_phone }}</div>
+            </div>
+            {% endif %}
+            {% if report.location_accuracy %}
+            <div class="report-meta-item">
+              <div class="report-meta-label">GPS Accuracy</div>
+              <div class="report-meta-value">±{{ report.location_accuracy|floatformat:0 }}m</div>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- LOCATION -->
+          {% if report.location_address or report.latitude %}
+          <div class="report-location">
+            <span class="report-location-icon">📍</span>
+            <span class="report-location-text">
+              {% if report.location_address %}{{ report.location_address }}{% elif report.latitude %}{{ report.latitude }}, {{ report.longitude }}{% else %}Location not available{% endif %}
+            </span>
+          </div>
+          {% endif %}
+
+        </div><!-- /card-body -->
+
+        <!-- FOOTER -->
+        <div class="report-card-footer">
+          <div class="report-time">
+            🕐 {{ report.created_at|date:"d M Y, H:i" }}
+          </div>
+          <div class="report-status-wrap">
+            <div class="status-indicator {{ stat }}"></div>
+            <span class="pill
+              {% if stat == 'pending' %}amber
+              {% elif stat == 'reviewing' %}blue
+              {% elif stat == 'resolved' %}green
+              {% else %}grey{% endif %}
+            ">{{ report.get_status_display }}</span>
+          </div>
+        </div>
+
+      </div><!-- /report-card -->
+      {% endwith %}
+      {% empty %}
+      <!-- EMPTY STATE -->
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">No Reports Yet</div>
+        <div class="empty-sub">You haven't submitted any SOS reports. If you spot a wildlife emergency, report it immediately.</div>
+        <a href="{% url 'sos_report' %}" class="empty-btn">🚨 Submit SOS Report</a>
+      </div>
+      {% endfor %}
+
+    </div><!-- /reports-grid -->
+
+  </div><!-- /main -->
+  </div><!-- /main-wrap -->
+
+</div><!-- /shell -->
+
+<script>
+  /* live clock */
+  function tick() {
+    const n = new Date();
+    document.getElementById('liveClock').textContent =
+      String(n.getHours()).padStart(2,'0') + ':' +
+      String(n.getMinutes()).padStart(2,'0') + ':' +
+      String(n.getSeconds()).padStart(2,'0');
+  }
+  tick(); setInterval(tick, 1000);
+
+  /* sidebar toggle */
+  const sidebar   = document.getElementById('sidebar');
+  const overlay   = document.getElementById('sidebarOverlay');
+  const hamburger = document.getElementById('hamburgerBtn');
+  function openSidebar()  { sidebar.classList.add('open');    overlay.classList.add('show');    document.body.style.overflow = 'hidden'; }
+  function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); document.body.style.overflow = ''; }
+  hamburger.addEventListener('click', () => sidebar.classList.contains('open') ? closeSidebar() : openSidebar());
+  overlay.addEventListener('click', closeSidebar);
+
+  /* count summary cards dynamically */
+  const cards = document.querySelectorAll('.report-card[data-status]');
+  const cnt = { pending:0, reviewing:0, resolved:0, false_alarm:0 };
+  cards.forEach(c => { const s = c.dataset.status; if (cnt[s] !== undefined) cnt[s]++; });
+  document.getElementById('reviewingCount').textContent = cnt.reviewing;
+  document.getElementById('resolvedCount').textContent  = cnt.resolved;
+
+  /* filter logic */
+  const filterBtns  = document.querySelectorAll('.filter-btn');
+  const visibleCount = document.getElementById('visibleCount');
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.filter;
+      let shown = 0;
+      cards.forEach(card => {
+        const match = f === 'all' || card.dataset.status === f;
+        card.style.display = match ? '' : 'none';
+        if (match) shown++;
+      });
+      visibleCount.textContent = shown;
+    });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,636 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wild Guard – SOS Emergency Reports</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --black:            #ffffff;
+      --black-2:          #f3f8ee;
+      --black-3:          #e8f2df;
+      --black-4:          #ddecd0;
+      --kiwi:             #5a9e10;
+      --kiwi-bright:      #6dba18;
+      --kiwi-dim:         #3d7008;
+      --kiwi-glow:        rgba(90,158,16,0.15);
+      --kiwi-glow-strong: rgba(90,158,16,0.30);
+      --white:            #1a2e0e;
+      --grey:             #5a7a4a;
+      --red:              #e05555;
+      --amber:            #d97706;
+      --blue:             #2563eb;
+      --purple:           #7c3aed;
+      --sidebar-w:        260px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--black); color: var(--white); font-family: 'Syne', sans-serif; min-height: 100vh; overflow-x: hidden; }
+    body::before { content:''; position:fixed; inset:0; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; opacity:0.4; }
+    .page-grid { position:fixed; inset:0; background-image:linear-gradient(rgba(90,158,16,0.06) 1px, transparent 1px),linear-gradient(90deg, rgba(90,158,16,0.06) 1px, transparent 1px); background-size:48px 48px; pointer-events:none; z-index:0; animation:gridMove 20s linear infinite; }
+
+    @keyframes gridMove { 0%{transform:translateY(0)} 100%{transform:translateY(48px)} }
+    @keyframes fadeUp   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes sosPulse { 0%,100%{box-shadow:0 0 0 0 rgba(224,85,85,0.45)} 50%{box-shadow:0 0 0 10px rgba(224,85,85,0)} }
+    @keyframes scanBar  { 0%{left:-100%;opacity:0} 10%{opacity:0.4} 90%{opacity:0.2} 100%{left:100%;opacity:0} }
+    @keyframes spin     { to{transform:rotate(360deg)} }
+
+    /* ══ SIDEBAR ══ */
+    .sidebar { position:fixed; top:0; left:0; bottom:0; width:var(--sidebar-w); background:rgba(243,248,238,0.97); border-right:1px solid rgba(90,158,16,0.15); display:flex; flex-direction:column; z-index:200; backdrop-filter:blur(12px); transition:transform 0.3s ease; }
+    .sidebar-logo { display:flex; align-items:center; gap:0.65rem; padding:1.4rem 1.4rem 1.2rem; border-bottom:1px solid rgba(90,158,16,0.12); text-decoration:none; flex-shrink:0; }
+    .sidebar-logo-icon { width:36px; height:36px; background:var(--kiwi); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; box-shadow:0 0 16px var(--kiwi-glow-strong); flex-shrink:0; }
+    .sidebar-logo-text { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.12em; color:var(--white); line-height:1; }
+    .sidebar-logo-text span { color:var(--kiwi); }
+    .sidebar-logo-sub { font-family:'Space Mono',monospace; font-size:0.48rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); margin-top:1px; }
+    .officer-badge { margin:1rem 1.2rem 0.8rem; background:rgba(90,158,16,0.07); border:1px solid rgba(90,158,16,0.18); border-radius:10px; padding:0.8rem 1rem; display:flex; align-items:center; gap:0.7rem; flex-shrink:0; }
+    .officer-avatar { width:40px; height:40px; border-radius:50%; background:var(--black-3); border:2px solid rgba(90,158,16,0.3); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0; overflow:hidden; }
+    .officer-avatar img { width:100%; height:100%; object-fit:cover; }
+    .officer-name { font-weight:700; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .officer-role { font-family:'Space Mono',monospace; font-size:0.54rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--kiwi); margin-top:1px; }
+    .officer-id-tag { font-family:'Space Mono',monospace; font-size:0.5rem; letter-spacing:0.08em; color:var(--grey); margin-top:2px; }
+    .officer-dot { width:8px; height:8px; border-radius:50%; background:var(--kiwi); margin-left:auto; flex-shrink:0; animation:pulse 2s infinite; box-shadow:0 0 6px var(--kiwi); }
+    .sidebar-nav { flex:1; overflow-y:auto; padding:0.6rem 0.8rem; scrollbar-width:thin; scrollbar-color:rgba(90,158,16,0.2) transparent; }
+    .nav-section-label { font-family:'Space Mono',monospace; font-size:0.52rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--grey); padding:0.8rem 0.6rem 0.4rem; opacity:0.7; }
+    .nav-item { display:flex; align-items:center; gap:0.7rem; padding:0.62rem 0.9rem; border-radius:8px; text-decoration:none; color:var(--grey); font-size:0.84rem; font-weight:600; transition:background 0.2s,color 0.2s; margin-bottom:2px; }
+    .nav-item:hover { background:rgba(90,158,16,0.08); color:var(--white); }
+    .nav-item.active { background:rgba(224,85,85,0.08); color:var(--red); border-left:3px solid var(--red); }
+    .nav-icon { font-size:1rem; flex-shrink:0; width:20px; text-align:center; }
+    .nav-badge { margin-left:auto; background:var(--kiwi); color:#fff; font-family:'Space Mono',monospace; font-size:0.52rem; font-weight:700; padding:1px 7px; border-radius:20px; }
+    .nav-badge.red { background:var(--red); }
+    .nav-badge.amber { background:var(--amber); }
+    .sidebar-footer { padding:0.8rem; border-top:1px solid rgba(90,158,16,0.12); flex-shrink:0; }
+    .btn-logout { width:100%; display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.9rem; background:rgba(224,85,85,0.06); border:1px solid rgba(224,85,85,0.2); border-radius:8px; color:var(--red); font-family:'Space Mono',monospace; font-size:0.68rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; text-decoration:none; transition:background 0.2s; }
+    .btn-logout:hover { background:rgba(224,85,85,0.12); }
+
+    /* ══ TOPBAR ══ */
+    .topbar { position:fixed; top:0; left:var(--sidebar-w); right:0; height:62px; background:rgba(255,255,255,0.95); border-bottom:1px solid rgba(90,158,16,0.12); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:space-between; padding:0 2rem; z-index:150; transition:left 0.3s; }
+    .topbar-left { display:flex; align-items:center; gap:0.8rem; }
+    .topbar-page-label { font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--grey); }
+    .topbar-page-title { font-family:'Bebas Neue',sans-serif; font-size:1.35rem; letter-spacing:0.06em; color:var(--white); }
+    .topbar-sep { width:1px; height:24px; background:rgba(90,158,16,0.2); }
+    .topbar-right { display:flex; align-items:center; gap:1rem; }
+    .topbar-time { font-family:'Space Mono',monospace; font-size:0.65rem; letter-spacing:0.1em; color:var(--grey); }
+    .topbar-alert-dot { width:10px; height:10px; border-radius:50%; background:var(--red); animation:pulse 1.4s infinite; box-shadow:0 0 8px rgba(224,85,85,0.5); }
+    .hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:4px; background:none; border:none; }
+    .hamburger span { display:block; width:22px; height:2px; background:var(--kiwi); border-radius:2px; transition:all 0.3s; }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.6); backdrop-filter:blur(2px); z-index:190; }
+    .sidebar-overlay.open { display:block; }
+    .scanline-bar { position:absolute; bottom:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--red),transparent); opacity:0; animation:scanBar 6s ease-in-out infinite; }
+
+    /* ══ MAIN ══ */
+    .main { margin-left:var(--sidebar-w); padding-top:62px; min-height:100vh; position:relative; z-index:1; transition:margin-left 0.3s; }
+    .content { padding:2rem 2rem 3rem; max-width:1400px; }
+
+    /* ══ BANNER ══ */
+    .page-banner { background:linear-gradient(135deg, rgba(224,85,85,0.14) 0%, rgba(200,60,60,0.08) 50%, rgba(243,248,238,0.9) 100%); border:1.5px solid rgba(224,85,85,0.22); border-radius:16px; padding:1.6rem 2rem; margin-bottom:1.8rem; position:relative; overflow:hidden; animation:fadeUp 0.4s ease forwards; }
+    .page-banner::before { content:''; position:absolute; inset:0; background-image:linear-gradient(rgba(224,85,85,0.05) 1px, transparent 1px),linear-gradient(90deg, rgba(224,85,85,0.05) 1px, transparent 1px); background-size:28px 28px; }
+    .page-banner-scan { position:absolute; top:0; height:100%; width:60%; background:linear-gradient(90deg,transparent,rgba(224,85,85,0.05),transparent); animation:scanBar 4s ease-in-out infinite; }
+    .page-banner-inner { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:1.5rem; flex-wrap:wrap; }
+    .banner-left { display:flex; align-items:center; gap:1.1rem; }
+    .banner-sos-ring { width:52px; height:52px; border-radius:50%; flex-shrink:0; background:rgba(224,85,85,0.12); border:2px solid rgba(224,85,85,0.35); display:flex; align-items:center; justify-content:center; font-size:1.5rem; animation:sosPulse 2.2s ease-in-out infinite; }
+    .banner-eyebrow { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.2em; text-transform:uppercase; color:rgba(224,85,85,0.7); margin-bottom:0.25rem; }
+    .banner-title { font-family:'Bebas Neue',sans-serif; font-size:clamp(1.5rem,3vw,2rem); letter-spacing:0.06em; color:var(--red); line-height:1; }
+    .banner-sub { font-size:0.8rem; color:var(--grey); margin-top:0.3rem; }
+    .banner-right { display:flex; gap:0.7rem; flex-wrap:wrap; }
+    .banner-stat { text-align:center; background:rgba(255,255,255,0.7); border:1px solid rgba(90,158,16,0.15); border-radius:10px; padding:0.65rem 1rem; min-width:72px; }
+    .banner-stat-num { font-family:'Bebas Neue',sans-serif; font-size:1.6rem; line-height:1; }
+    .banner-stat-num.red   { color:var(--red); }
+    .banner-stat-num.amber { color:var(--amber); }
+    .banner-stat-num.kiwi  { color:var(--kiwi); }
+    .banner-stat-num.grey  { color:var(--grey); }
+    .banner-stat-label { font-family:'Space Mono',monospace; font-size:0.48rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--grey); margin-top:2px; }
+
+    /* ══ FILTER BAR ══ */
+    .filter-bar { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.4rem; flex-wrap:wrap; animation:fadeUp 0.5s ease 0.1s both; }
+    .filter-left { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+    .filter-label { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--grey); white-space:nowrap; }
+    .filter-btn { display:inline-flex; align-items:center; gap:0.35rem; padding:0.42rem 0.9rem; border-radius:20px; border:1px solid rgba(90,158,16,0.18); background:var(--black-2); color:var(--grey); font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.06em; text-decoration:none; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+    .filter-btn:hover { background:var(--black-3); color:var(--white); border-color:rgba(90,158,16,0.3); }
+    .filter-btn.active-all       { background:rgba(90,158,16,0.1); color:var(--kiwi); border-color:rgba(90,158,16,0.3); }
+    .filter-btn.active-pending   { background:rgba(217,119,6,0.1); color:var(--amber); border-color:rgba(217,119,6,0.3); }
+    .filter-btn.active-reviewing { background:rgba(37,99,235,0.1); color:var(--blue); border-color:rgba(37,99,235,0.3); }
+    .filter-btn.active-resolved  { background:rgba(90,158,16,0.1); color:var(--kiwi); border-color:rgba(90,158,16,0.3); }
+    .filter-btn.active-false_alarm { background:rgba(124,58,237,0.08); color:var(--purple); border-color:rgba(124,58,237,0.2); }
+    .radius-chip { display:inline-flex; align-items:center; gap:0.4rem; padding:0.42rem 0.9rem; border-radius:20px; background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2); font-family:'Space Mono',monospace; font-size:0.6rem; letter-spacing:0.06em; color:var(--blue); }
+    .refresh-btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.42rem 1rem; border-radius:8px; background:var(--kiwi); color:#fff; font-family:'Space Mono',monospace; font-size:0.6rem; font-weight:700; letter-spacing:0.08em; border:none; cursor:pointer; transition:background 0.2s,transform 0.15s; }
+    .refresh-btn:hover { background:var(--kiwi-dim); transform:translateY(-1px); }
+
+    /* ══ ERROR BOX ══ */
+    .error-box { background:rgba(224,85,85,0.08); border:1px solid rgba(224,85,85,0.25); border-radius:12px; padding:1rem 1.2rem; margin-bottom:1.4rem; display:flex; align-items:center; gap:0.75rem; }
+    .error-box-icon { font-size:1.3rem; flex-shrink:0; }
+    .error-box-text { font-size:0.85rem; color:var(--red); }
+
+    /* ══ EMPTY STATE ══ */
+    .empty-state { text-align:center; padding:4rem 2rem; }
+    .empty-icon { font-size:3.5rem; margin-bottom:1rem; opacity:0.4; }
+    .empty-title { font-family:'Bebas Neue',sans-serif; font-size:1.5rem; letter-spacing:0.06em; color:var(--grey); margin-bottom:0.5rem; }
+    .empty-sub { font-size:0.82rem; color:var(--grey); opacity:0.7; }
+
+    /* ══ REPORT CARDS ══ */
+    .reports-grid { display:flex; flex-direction:column; gap:1rem; }
+    .report-card { background:var(--black-2); border:1px solid rgba(90,158,16,0.15); border-radius:14px; overflow:hidden; transition:transform 0.2s,box-shadow 0.2s,border-color 0.2s; animation:fadeUp 0.5s ease both; position:relative; }
+    .report-card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(90,158,16,0.1); border-color:rgba(90,158,16,0.28); }
+    .report-card::before { content:''; position:absolute; top:0; left:0; bottom:0; width:4px; border-radius:14px 0 0 14px; }
+    .report-card.sev-critical::before { background:var(--red); }
+    .report-card.sev-high::before     { background:#f07832; }
+    .report-card.sev-medium::before   { background:var(--amber); }
+    .report-card.sev-low::before      { background:var(--kiwi); }
+    .report-card-inner { padding:1.2rem 1.4rem 1.2rem 1.6rem; }
+
+    .rc-header { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:0.9rem; flex-wrap:wrap; }
+    .rc-header-left { display:flex; align-items:flex-start; gap:0.85rem; flex:1; min-width:0; }
+    .rc-animal-icon { width:44px; height:44px; border-radius:10px; background:var(--black-3); border:1px solid rgba(90,158,16,0.15); display:flex; align-items:center; justify-content:center; font-size:1.4rem; flex-shrink:0; }
+    .rc-title-block { flex:1; min-width:0; }
+    .rc-animal-name { font-weight:800; font-size:1rem; line-height:1.2; }
+    .rc-reporter { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.06em; color:var(--grey); margin-top:3px; }
+    .rc-header-right { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; flex-shrink:0; }
+
+    /* pills */
+    .pill { display:inline-flex; align-items:center; gap:3px; font-family:'Space Mono',monospace; font-size:0.55rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:3px 8px; border-radius:20px; white-space:nowrap; }
+    .pill.red    { background:rgba(224,85,85,0.1); color:var(--red); border:1px solid rgba(224,85,85,0.25); }
+    .pill.orange { background:rgba(240,120,50,0.1); color:#f07832; border:1px solid rgba(240,120,50,0.25); }
+    .pill.amber  { background:rgba(217,119,6,0.1); color:var(--amber); border:1px solid rgba(217,119,6,0.25); }
+    .pill.green  { background:rgba(90,158,16,0.1); color:var(--kiwi); border:1px solid rgba(90,158,16,0.25); }
+    .pill.blue   { background:rgba(37,99,235,0.1); color:var(--blue); border:1px solid rgba(37,99,235,0.25); }
+    .pill.purple { background:rgba(124,58,237,0.08); color:var(--purple); border:1px solid rgba(124,58,237,0.2); }
+    .pill.grey   { background:rgba(90,122,74,0.08); color:var(--grey); border:1px solid rgba(90,122,74,0.2); }
+
+    .rc-desc { font-size:0.82rem; color:var(--grey); line-height:1.65; margin-bottom:1rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .rc-meta { display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .rc-meta-item { display:flex; align-items:center; gap:0.35rem; font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.04em; color:var(--grey); }
+    .rc-meta-item .ic { font-size:0.85rem; }
+
+    .rc-footer { display:flex; align-items:center; justify-content:space-between; gap:0.85rem; padding-top:0.9rem; border-top:1px solid rgba(90,158,16,0.1); flex-wrap:wrap; }
+    .rc-footer-left { display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+    .status-select-wrap { display:flex; align-items:center; gap:0.5rem; }
+    .status-select-lbl { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--grey); white-space:nowrap; }
+    .status-select { background:var(--black-3); border:1px solid rgba(90,158,16,0.2); color:var(--white); font-family:'Space Mono',monospace; font-size:0.62rem; letter-spacing:0.04em; border-radius:7px; padding:0.35rem 2rem 0.35rem 0.7rem; appearance:none; cursor:pointer; outline:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235a7a4a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 0.7rem center; transition:border-color 0.2s; }
+    .status-select:focus { border-color:rgba(90,158,16,0.4); }
+    .status-select option { background:var(--black-2); }
+    .update-btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.38rem 0.9rem; border-radius:7px; background:var(--kiwi); color:#fff; font-family:'Space Mono',monospace; font-size:0.6rem; font-weight:700; letter-spacing:0.08em; border:none; cursor:pointer; transition:background 0.2s,transform 0.15s; white-space:nowrap; }
+    .update-btn:hover { background:var(--kiwi-dim); transform:translateY(-1px); }
+    .update-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+    .update-btn .spin { animation:spin 0.8s linear infinite; display:inline-block; }
+    .rc-footer-right { display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
+    .map-btn, .contact-btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.38rem 0.85rem; border-radius:7px; font-family:'Space Mono',monospace; font-size:0.6rem; font-weight:700; letter-spacing:0.06em; border:none; cursor:pointer; text-decoration:none; transition:all 0.2s; white-space:nowrap; }
+    .map-btn { background:rgba(37,99,235,0.1); color:var(--blue); border:1px solid rgba(37,99,235,0.25); }
+    .map-btn:hover { background:rgba(37,99,235,0.18); transform:translateY(-1px); }
+    .contact-btn { background:rgba(90,158,16,0.08); color:var(--kiwi); border:1px solid rgba(90,158,16,0.2); }
+    .contact-btn:hover { background:rgba(90,158,16,0.15); transform:translateY(-1px); }
+
+    /* ══ TOAST ══ */
+    .toast { position:fixed; bottom:2rem; right:2rem; z-index:999; background:var(--black-2); border:1px solid rgba(90,158,16,0.25); border-radius:12px; padding:0.9rem 1.3rem; display:flex; align-items:center; gap:0.75rem; box-shadow:0 8px 32px rgba(90,158,16,0.15); transform:translateY(20px); opacity:0; transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1); pointer-events:none; max-width:320px; }
+    .toast.show { transform:translateY(0); opacity:1; pointer-events:auto; }
+    .toast.error { border-color:rgba(224,85,85,0.3); box-shadow:0 8px 32px rgba(224,85,85,0.1); }
+    .toast-icon { font-size:1.2rem; flex-shrink:0; }
+    .toast-text { font-size:0.82rem; color:var(--white); font-weight:600; }
+    .toast-sub { font-family:'Space Mono',monospace; font-size:0.55rem; color:var(--grey); margin-top:2px; }
+
+    /* ══ MAP MODAL ══ */
+    .map-modal-overlay { position:fixed; inset:0; z-index:500; background:rgba(243,248,238,0.85); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; padding:1.5rem; opacity:0; pointer-events:none; transition:opacity 0.25s; }
+    .map-modal-overlay.show { opacity:1; pointer-events:auto; }
+    .map-modal { background:var(--black-2); border:1px solid rgba(90,158,16,0.2); border-radius:18px; overflow:hidden; width:100%; max-width:700px; max-height:90vh; display:flex; flex-direction:column; transform:scale(0.95); transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 20px 60px rgba(90,158,16,0.15); }
+    .map-modal-overlay.show .map-modal { transform:scale(1); }
+    .map-modal-header { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.4rem; border-bottom:1px solid rgba(90,158,16,0.1); background:rgba(90,158,16,0.04); flex-shrink:0; }
+    .map-modal-title { font-family:'Bebas Neue',sans-serif; font-size:1.1rem; letter-spacing:0.08em; color:var(--white); }
+    .map-modal-sub { font-family:'Space Mono',monospace; font-size:0.55rem; letter-spacing:0.08em; color:var(--grey); margin-top:2px; }
+    .map-close-btn { width:32px; height:32px; border-radius:8px; background:var(--black-3); border:none; cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center; transition:background 0.2s; color:var(--white); flex-shrink:0; }
+    .map-close-btn:hover { background:var(--black-4); }
+    .map-frame-wrap { flex:1; overflow:hidden; min-height:380px; }
+    .map-frame-wrap iframe { width:100%; height:100%; border:none; min-height:380px; }
+    .map-modal-footer { padding:0.9rem 1.4rem; border-top:1px solid rgba(90,158,16,0.1); display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap; background:rgba(90,158,16,0.03); flex-shrink:0; }
+    .map-coords { font-family:'Space Mono',monospace; font-size:0.58rem; letter-spacing:0.06em; color:var(--grey); }
+    .open-gmaps-btn { display:inline-flex; align-items:center; gap:0.4rem; padding:0.45rem 1rem; border-radius:8px; background:rgba(37,99,235,0.1); color:var(--blue); border:1px solid rgba(37,99,235,0.25); font-family:'Space Mono',monospace; font-size:0.6rem; font-weight:700; text-decoration:none; transition:all 0.2s; }
+    .open-gmaps-btn:hover { background:rgba(37,99,235,0.18); }
+
+    /* ══ RESPONSIVE ══ */
+    @media (max-width:768px) {
+      :root { --sidebar-w:260px; }
+      .sidebar { transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); box-shadow:4px 0 30px rgba(90,158,16,0.15); }
+      .topbar { left:0; }
+      .hamburger { display:flex; }
+      .main { margin-left:0; }
+      .content { padding:1.2rem 1rem 3rem; }
+      .topbar-time { display:none; }
+    }
+    @media (max-width:640px) {
+      .rc-header { flex-direction:column; gap:0.7rem; }
+      .rc-header-right { align-self:flex-start; }
+      .rc-footer { flex-direction:column; align-items:flex-start; }
+      .rc-footer-right { width:100%; }
+      .map-btn, .contact-btn, .update-btn { flex:1; justify-content:center; }
+      .banner-right { width:100%; justify-content:space-between; }
+    }
+    @media (max-width:480px) {
+      .filter-left { gap:0.4rem; }
+      .filter-btn { font-size:0.56rem; padding:0.35rem 0.7rem; }
+      .map-modal { border-radius:14px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-grid"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <a href="{% url 'officer_home' %}" class="sidebar-logo">
+    <div class="sidebar-logo-icon">🐾</div>
+    <div>
+      <div class="sidebar-logo-text">WILD<span>GUARD</span></div>
+      <div class="sidebar-logo-sub">Officer Portal</div>
+    </div>
+  </a>
+
+  {% if officer %}
+  <div class="officer-badge">
+    <div class="officer-avatar">
+      {% if officer.profile_image %}<img src="{{ officer.profile_image.url }}" alt="{{ officer.name }}"/>
+      {% else %}🪖{% endif %}
+    </div>
+    <div>
+      <div class="officer-name">{{ officer.name|default:"Officer" }}</div>
+      <div class="officer-role">{{ officer.designation|default:"Forest Officer" }}</div>
+      <div class="officer-id-tag">{{ officer.officer_id|default:"—" }}</div>
+    </div>
+    <div class="officer-dot"></div>
+  </div>
+  {% endif %}
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-item" href="{% url 'officer_home' %}"><span class="nav-icon">📊</span>Dashboard</a>
+
+    <div class="nav-section-label">Alerts</div>
+    <a class="nav-item" href="{% url 'officer_alerts_list' %}"><span class="nav-icon">🔔</span>Wildlife Alerts</a>
+    <a class="nav-item active" href="{% url 'officer_sos_report_list' %}">
+      <span class="nav-icon">🚨</span>Emergency Reports
+    </a>
+
+    <div class="nav-section-label">Field</div>
+    <a class="nav-item" href="{% url 'officer_danger_zone' %}"><span class="nav-icon">⚠️</span>Danger Zones</a>
+
+    <div class="nav-section-label">My Account</div>
+    <a class="nav-item" href="{% url 'officer_profile' %}"><span class="nav-icon">👤</span>My Profile</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="{% url 'logout' %}" class="btn-logout"><span>⏏</span> Log Out</a>
+  </div>
+</aside>
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="topbar-sep"></div>
+    <div>
+      <div class="topbar-page-label">// Officer Portal · Emergency Reports</div>
+      <div class="topbar-page-title">SOS REPORTS</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-time" id="liveClock"></div>
+    {% if counts.pending %}<div class="topbar-alert-dot"></div>{% endif %}
+  </div>
+  <div class="scanline-bar"></div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+<div class="content">
+
+  <!-- BANNER -->
+  <div class="page-banner">
+    <div class="page-banner-scan"></div>
+    <div class="page-banner-inner">
+      <div class="banner-left">
+        <div class="banner-sos-ring">🚨</div>
+        <div>
+          <div class="banner-eyebrow">// 10km radius · {{ officer.forest_range|default:"Your Range" }}</div>
+          <div class="banner-title">Emergency SOS Reports</div>
+          <div class="banner-sub">Showing reports within 10 km of your registered location.</div>
+        </div>
+      </div>
+      <div class="banner-right">
+        <div class="banner-stat"><div class="banner-stat-num red">{{ counts.total }}</div><div class="banner-stat-label">Total</div></div>
+        <div class="banner-stat"><div class="banner-stat-num amber">{{ counts.pending }}</div><div class="banner-stat-label">Pending</div></div>
+        <div class="banner-stat"><div class="banner-stat-num grey">{{ counts.reviewing }}</div><div class="banner-stat-label">Reviewing</div></div>
+        <div class="banner-stat"><div class="banner-stat-num kiwi">{{ counts.resolved }}</div><div class="banner-stat-label">Resolved</div></div>
+        <div class="banner-stat"><div class="banner-stat-num red">{{ counts.critical }}</div><div class="banner-stat-label">Critical</div></div>
+      </div>
+    </div>
+  </div>
+
+  {% if error_msg %}
+  <div class="error-box">
+    <span class="error-box-icon">⚠️</span>
+    <span class="error-box-text">{{ error_msg }}</span>
+  </div>
+  {% endif %}
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="filter-left">
+      <span class="filter-label">Filter:</span>
+      <a href="?status=" class="filter-btn {% if not status_filter %}active-all{% endif %}">All ({{ counts.total }})</a>
+      <a href="?status=pending"     class="filter-btn {% if status_filter == 'pending' %}active-pending{% endif %}">⏳ Pending</a>
+      <a href="?status=reviewing"   class="filter-btn {% if status_filter == 'reviewing' %}active-reviewing{% endif %}">🔍 Reviewing</a>
+      <a href="?status=resolved"    class="filter-btn {% if status_filter == 'resolved' %}active-resolved{% endif %}">✅ Resolved</a>
+      <a href="?status=false_alarm" class="filter-btn {% if status_filter == 'false_alarm' %}active-false_alarm{% endif %}">❌ False Alarm</a>
+      <span class="radius-chip">📍 ≤ 10 km radius</span>
+    </div>
+    <button class="refresh-btn" onclick="window.location.reload()">↻ Refresh</button>
+  </div>
+
+  <!-- REPORT CARDS -->
+  {% if reports %}
+  <div class="reports-grid">
+    {% for report in reports %}
+    <div class="report-card sev-{{ report.severity }}"
+         style="animation-delay:{{ forloop.counter0 }}00ms;"
+         id="card-{{ report.id }}">
+      <div class="report-card-inner">
+
+        <!-- Header -->
+        <div class="rc-header">
+          <div class="rc-header-left">
+            <div class="rc-animal-icon">
+              {% with n=report.animal_name|lower %}
+                {% if n == "elephant" %}🐘{% elif n == "tiger" %}🐯{% elif n == "leopard" %}🐆
+                {% elif n == "bear" %}🐻{% elif n == "snake" %}🐍{% elif n == "crocodile" %}🐊
+                {% elif n == "wild boar" %}🐗{% elif n == "monkey" %}🐒{% else %}🐾{% endif %}
+              {% endwith %}
+            </div>
+            <div class="rc-title-block">
+              <div class="rc-animal-name">{{ report.animal_name }}</div>
+              <div class="rc-reporter">
+                {% if report.reporter_name %}👤 {{ report.reporter_name }}{% endif %}
+                {% if report.reporter_phone %} · 📞 {{ report.reporter_phone }}{% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="rc-header-right">
+            <!-- Severity pill (static) -->
+            {% if report.severity == 'critical' %}<span class="pill red">🔴 Critical</span>
+            {% elif report.severity == 'high' %}<span class="pill orange">🟠 High</span>
+            {% elif report.severity == 'medium' %}<span class="pill amber">🟡 Medium</span>
+            {% else %}<span class="pill green">🟢 Low</span>{% endif %}
+
+            <!-- Status pill — ID-targeted so JS update is reliable, no emoji text matching -->
+            <span id="status-pill-{{ report.id }}" class="pill
+              {% if report.status == 'pending' %}amber
+              {% elif report.status == 'reviewing' %}blue
+              {% elif report.status == 'resolved' %}green
+              {% else %}purple{% endif %}">
+              {% if report.status == 'pending' %}⏳ Pending
+              {% elif report.status == 'reviewing' %}🔍 Reviewing
+              {% elif report.status == 'resolved' %}✅ Resolved
+              {% else %}❌ False Alarm{% endif %}
+            </span>
+
+            <span class="pill grey">#{{ report.id }}</span>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="rc-desc">{{ report.description }}</div>
+
+        <!-- Meta -->
+        <div class="rc-meta">
+          <span class="rc-meta-item"><span class="ic">🕒</span>{{ report.created_at|date:"d M Y, H:i" }}</span>
+          {% if report.distance_km is not None %}
+          <span class="rc-meta-item"><span class="ic">📍</span>{{ report.distance_km }} km away</span>
+          {% endif %}
+          {% if report.location_address %}
+          <span class="rc-meta-item"><span class="ic">🗺️</span>{{ report.location_address|truncatechars:60 }}</span>
+          {% endif %}
+          {% if report.reporter_email %}
+          <span class="rc-meta-item"><span class="ic">✉️</span>{{ report.reporter_email }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Footer actions -->
+        <div class="rc-footer">
+          <div class="rc-footer-left">
+            <div class="status-select-wrap">
+              <span class="status-select-lbl">Status:</span>
+              <select class="status-select" id="sel-{{ report.id }}">
+                {% for val, label in status_choices %}
+                  <option value="{{ val }}" {% if report.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button class="update-btn" id="updbtn-{{ report.id }}" data-url="{% url 'officer_sos_update_status' report.id %}" onclick="updateStatus({{ report.id }})">
+              ✔ Update Status
+            </button>
+          </div>
+
+          <div class="rc-footer-right">
+            {% if report.latitude and report.longitude %}
+            <button class="map-btn" onclick="openMap(
+                {{ report.id }},
+                '{{ report.animal_name|escapejs }}',
+                '{{ report.latitude }}',
+                '{{ report.longitude }}',
+                '{{ report.location_address|escapejs }}')">
+              🗺️ View on Map
+            </button>
+            {% endif %}
+            {% if report.reporter_phone %}
+            <a class="contact-btn" href="tel:{{ report.reporter_phone }}">📞 Call Reporter</a>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <div class="empty-title">No Reports Found</div>
+    <div class="empty-sub">
+      {% if status_filter %}No <strong>{{ status_filter }}</strong> reports within 10 km. <a href="?" style="color:var(--kiwi);">Clear filter</a>
+      {% elif error_msg %}Please update your profile with GPS coordinates to see nearby reports.
+      {% else %}No SOS reports within 10 km of your registered location.{% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+</main>
+
+<!-- ══ MAP MODAL ══ -->
+<div class="map-modal-overlay" id="mapModalOverlay">
+  <div class="map-modal">
+    <div class="map-modal-header">
+      <div>
+        <div class="map-modal-title" id="mapModalTitle">Location Map</div>
+        <div class="map-modal-sub"  id="mapModalSub">SOS Report Location</div>
+      </div>
+      <button class="map-close-btn" onclick="closeMap()">✕</button>
+    </div>
+    <div class="map-frame-wrap">
+      <iframe id="mapIframe" src="" loading="lazy" allowfullscreen
+              referrerpolicy="no-referrer-when-downgrade" title="Report Location"></iframe>
+    </div>
+    <div class="map-modal-footer">
+      <span class="map-coords" id="mapCoords">—</span>
+      <a class="open-gmaps-btn" id="openGmapsLink" href="#" target="_blank" rel="noopener">↗ Open in Google Maps</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon">✅</span>
+  <div>
+    <div class="toast-text" id="toastText">Status updated</div>
+    <div class="toast-sub"  id="toastSub">—</div>
+  </div>
+</div>
+
+<script>
+  /* ── Sidebar toggle ── */
+  var sidebar   = document.getElementById('sidebar');
+  var sOverlay  = document.getElementById('sidebarOverlay');
+  var hamburger = document.getElementById('hamburger');
+  hamburger.addEventListener('click', function() { sidebar.classList.toggle('open'); sOverlay.classList.toggle('open'); });
+  sOverlay.addEventListener('click',  function() { sidebar.classList.remove('open'); sOverlay.classList.remove('open'); });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { sidebar.classList.remove('open'); sOverlay.classList.remove('open'); closeMap(); }
+  });
+
+  /* ── Live clock ── */
+  function updateClock() {
+    var n = new Date();
+    document.getElementById('liveClock').textContent =
+      String(n.getHours()).padStart(2,'0') + ':' +
+      String(n.getMinutes()).padStart(2,'0') + ':' +
+      String(n.getSeconds()).padStart(2,'0');
+  }
+  updateClock(); setInterval(updateClock, 1000);
+
+  /* ── Toast ── */
+  var toastTimer;
+  function showToast(icon, text, sub, isError) {
+    var t = document.getElementById('toast');
+    document.getElementById('toastIcon').textContent = icon;
+    document.getElementById('toastText').textContent = text;
+    document.getElementById('toastSub').textContent  = sub;
+    t.classList.toggle('error', !!isError);
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() { t.classList.remove('show'); }, 3500);
+  }
+
+  /* ── CSRF helper (reads cookie) ── */
+  function getCsrfToken() {
+    var match = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  /* ── Pill update map ── */
+  var PILL_MAP = {
+    pending:     { cls: 'amber',  label: '⏳ Pending' },
+    reviewing:   { cls: 'blue',   label: '🔍 Reviewing' },
+    resolved:    { cls: 'green',  label: '✅ Resolved' },
+    false_alarm: { cls: 'purple', label: '❌ False Alarm' }
+  };
+
+  function updateStatusPill(reportId, status) {
+    var pill = document.getElementById('status-pill-' + reportId);
+    if (!pill) return;
+    var mapping = PILL_MAP[status];
+    if (!mapping) return;
+    pill.className = 'pill ' + mapping.cls;
+    pill.textContent = mapping.label;
+  }
+
+  /* ── Status update via fetch (no @require_POST needed) ── */
+  function updateStatus(reportId) {
+    var sel    = document.getElementById('sel-' + reportId);
+    var btn    = document.getElementById('updbtn-' + reportId);
+    var newStatus = sel.value;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin">⟳</span> Updating…';
+
+    /* URLSearchParams body is x-www-form-urlencoded — works with csrf_exempt view */
+    var body = new URLSearchParams();
+    body.append('status', newStatus);
+
+    /* Build URL from the data-url attribute on the button — avoids hardcoded paths */
+    var url = btn.getAttribute('data-url');
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken':  getCsrfToken()
+      },
+      body: body.toString()
+    })
+    .then(function(res) {
+      if (!res.ok) {
+        return res.json().then(function(d) { throw new Error(d.error || ('Server error ' + res.status)); });
+      }
+      return res.json();
+    })
+    .then(function(data) {
+      if (data.success) {
+        updateStatusPill(reportId, data.status);
+        showToast('✅', 'Status updated', 'Report #' + reportId + ' → ' + data.status_display, false);
+      } else {
+        showToast('❌', 'Update failed', data.error || 'Unknown error', true);
+      }
+    })
+    .catch(function(err) {
+      showToast('❌', 'Request failed', err.message || 'Network error', true);
+    })
+    .finally(function() {
+      btn.disabled = false;
+      btn.innerHTML = '✔ Update Status';
+    });
+  }
+
+  /* ── Map modal ── */
+  function openMap(id, animal, lat, lng, addr) {
+    var overlay = document.getElementById('mapModalOverlay');
+    document.getElementById('mapModalTitle').textContent = '📍 ' + animal + ' — Report #' + id;
+    document.getElementById('mapModalSub').textContent   = addr || (lat + ', ' + lng);
+    document.getElementById('mapCoords').textContent     = lat + ', ' + lng;
+    document.getElementById('openGmapsLink').href = 'https://www.google.com/maps?q=' + lat + ',' + lng;
+
+    var lngF = parseFloat(lng), latF = parseFloat(lat);
+    document.getElementById('mapIframe').src =
+      'https://www.openstreetmap.org/export/embed.html' +
+      '?bbox=' + (lngF - 0.02) + ',' + (latF - 0.02) + ',' + (lngF + 0.02) + ',' + (latF + 0.02) +
+      '&layer=mapnik&marker=' + latF + ',' + lngF;
+
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMap() {
+    var overlay = document.getElementById('mapModalOverlay');
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+    setTimeout(function() { document.getElementById('mapIframe').src = ''; }, 300);
+  }
+
+  document.getElementById('mapModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeMap();
+  });
+</script>
+</body>
+</html>
