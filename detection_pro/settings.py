@@ -128,10 +128,9 @@ EMAIL_BACKEND ='django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
 EMAIL_PORT = 587
-EMAIL_HOST_USER= 'nefsal003@gmail.com'
-EMAIL_HOST_PASSWORD= 'htxalvzrrkxupspv'
+EMAIL_HOST_USER= 'jishnuprakasharullil@gmail.com'
+EMAIL_HOST_PASSWORD= 'mpzw mxkl hqek krxx'
 
-ALERT_EMAIL_RECIPIENTS = ["anamikaes123@gmail.com"]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
